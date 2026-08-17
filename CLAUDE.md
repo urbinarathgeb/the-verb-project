@@ -71,6 +71,10 @@ Pinia y composables **conviven**, no son alternativas. La regla para decidir dó
 
 **Patrón obligatorio:** los componentes de UI **nunca** acceden a un store de Pinia directamente. Siempre lo hacen a través de un composable que actúa como interfaz pública y encapsula la lógica de negocio (ej. `useGameEngine()` envolviendo internamente `useGameStore()`). Esto desacopla los componentes de la implementación del estado.
 
+Esta regla **la aplica ESLint**, no la disciplina: la sección `app/componentes-no-acceden-a-pinia` de `eslint.config.ts` prohíbe importar `@/stores/*` o `pinia` desde `src/components/**` y `src/screens/**`.
+
+Dentro del composable, el estado y los getters se extraen con `storeToRefs` y las acciones se desestructuran directamente del store. Desestructurar el store sin `storeToRefs` congela los valores y la UI deja de actualizarse en silencio.
+
 ```ts
 // composables/useGameEngine.ts
 import { useGameStore } from '@/stores/game'
