@@ -4,8 +4,18 @@
  * `import.meta.env.DEV` es true, así que no entra en el bundle de producción.
  *
  * Sirve para validar los tokens de T0.5 sin depender de pantallas reales, y
- * como referencia al construir los componentes de la Fase 3.
+ * como banco de pruebas de los componentes de la Fase 3: aquí se ven sus estados
+ * antes de que exista una pantalla de juego (T3.2).
  */
+
+import {ref} from 'vue'
+import GameBoard from '@/components/GameBoard.vue'
+import GameModal from '@/components/GameModal.vue'
+import HudBar from '@/components/HudBar.vue'
+import {createBoard} from '@/lib/board'
+import {createSeededRng} from '@/lib/shuffle'
+import {getVerbsForDifficulty} from '@/data/verbs'
+import type {Cell, CellStatus} from '@/types/game'
 
 const colors = [
 	{name: 'ink', className: 'bg-ink', value: '#000000'},
@@ -61,6 +71,37 @@ const cellStates = [
 /** Columna de sample: verifica que el tablero funciona sin posición absoluta. */
 const sampleColumn = ['Go', 'Eat', 'Write', 'See', 'Take'] as const
 const tilts = ['paper-tilt-1', 'paper-tilt-2', 'paper-tilt-3', 'paper-tilt-4'] as const
+
+/* ---------------------------------------------------------------------------
+ * Componentes de T3.1
+ *
+ * Se montan con datos fijos (semilla fija, sin store) para poder mirarlos sin
+ * jugar una partida. La lógica real los conecta en T3.2.
+ * ------------------------------------------------------------------------- */
+
+const demoBoard = createBoard(getVerbsForDifficulty('easy'), 6, createSeededRng(7))
+
+/** Simula los cuatro estados sobre celdas concretas del tablero de muestra. */
+const demoSelection = ref<string | null>(null)
+const demoErrorIds = demoBoard.columns.past.slice(0, 1).map((cell) => cell.id)
+const demoResolvedId = demoBoard.columns.present[2]?.verbId ?? -1
+
+function demoCellStatus(cell: Cell): CellStatus {
+	if (demoErrorIds.includes(cell.id)) return 'error'
+	if (cell.verbId === demoResolvedId) return 'resolved'
+	if (demoSelection.value === cell.id) return 'selected'
+	return 'neutral'
+}
+
+function demoSelectable(cell: Cell): boolean {
+	return cell.verbId !== demoResolvedId
+}
+
+function onDemoSelect(cell: Cell): void {
+	demoSelection.value = demoSelection.value === cell.id ? null : cell.id
+}
+
+const isModalOpen = ref(false)
 </script>
 
 <template>
@@ -186,6 +227,101 @@ const tilts = ['paper-tilt-1', 'paper-tilt-2', 'paper-tilt-3', 'paper-tilt-4'] a
 						</li>
 					</ul>
 				</div>
+			</section>
+
+			<!-- Componentes de T3.1 -->
+			<section class="flex flex-col gap-gutter">
+				<h2 class="text-headline-md font-display">HudBar</h2>
+				<p class="text-caption">
+					Modo Objetivo con cuenta regresiva, y el mismo HUD en estado de urgencia (menos de 10 s):
+					el reloj pasa a rosa y muestra décimas.
+				</p>
+				<HudBar
+					mode="target"
+					:elapsed-ms="35_000"
+					:remaining-ms="55_000"
+					:matched-count="4"
+					:errors="2"
+					:remaining-targets="4"
+					:pace="0"
+				/>
+				<HudBar
+					mode="target"
+					:elapsed-ms="82_000"
+					:remaining-ms="8_400"
+					:matched-count="7"
+					:errors="3"
+					:remaining-targets="1"
+					:pace="0"
+				/>
+				<p class="text-caption">
+					Modo Precisión: cronómetro ascendente y ritmo en lugar de errores.
+				</p>
+				<HudBar
+					mode="precision"
+					:elapsed-ms="42_000"
+					:remaining-ms="null"
+					:matched-count="9"
+					:errors="0"
+					:remaining-targets="null"
+					:pace="12.857"
+				/>
+			</section>
+
+			<section class="flex flex-col gap-gutter">
+				<h2 class="text-headline-md font-display">GameBoard</h2>
+				<p class="text-caption">
+					Tablero real de nivel fácil (N = 6) con semilla fija. Pulsa una celda para verla
+					seleccionada; la tercera del presente está resuelta y una del pasado en error. Las tres
+					columnas se mantienen en móvil: sólo se encogen las celdas.
+				</p>
+				<div class="min-h-96">
+					<GameBoard
+						:columns="demoBoard.columns"
+						:cell-status="demoCellStatus"
+						:is-cell-selectable="demoSelectable"
+						@select="onDemoSelect"
+					/>
+				</div>
+			</section>
+
+			<section class="flex flex-col gap-gutter">
+				<h2 class="text-headline-md font-display">GameModal</h2>
+				<p class="text-caption">
+					Se teletransporta a <code>body</code> para no quedar recortado por el tablero. El foco
+					atrapado y el cierre con <kbd>Esc</kbd> llegan en T3.4.
+				</p>
+				<button
+					type="button"
+					class="brutal-card brutal-press min-h-touch w-fit px-6 py-3 font-display text-label-bold uppercase"
+					@click="isModalOpen = true"
+				>
+					Abrir modal
+				</button>
+				<GameModal
+					:open="isModalOpen"
+					title="Se acabó el tiempo"
+					dismissible
+					@close="isModalOpen = false"
+				>
+					<p>Emparejaste 7 de 8 verbos. Te faltó uno.</p>
+					<template #actions>
+						<button
+							type="button"
+							class="brutal-card brutal-press min-h-touch flex-1 bg-electric px-6 py-3 font-display text-label-bold uppercase"
+							@click="isModalOpen = false"
+						>
+							Reintentar
+						</button>
+						<button
+							type="button"
+							class="brutal-card brutal-press min-h-touch flex-1 px-6 py-3 font-display text-label-bold uppercase"
+							@click="isModalOpen = false"
+						>
+							Salir
+						</button>
+					</template>
+				</GameModal>
 			</section>
 		</div>
 	</div>
