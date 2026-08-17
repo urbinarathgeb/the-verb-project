@@ -1,0 +1,288 @@
+/*
+ * The Verb Project — Sistema de diseño "Neo-Paper Brutalist"
+ *
+ * Adaptado del design.md del proyecto de Stitch "Irregular Verb Mastery".
+ * Ver PLAN.md (Bitácora de Decisiones, D3) para qué se adoptó y qué no.
+ *
+ * Principios: tinta negra para todo borde y todo texto, sombras duras sin
+ * desenfoque, esquinas rectas, fondo de papel y una retícula de 4px.
+ */
+
+/* Fuentes auto-hospedadas: sólo subconjunto latino y sólo los pesos usados. */
+@import '@fontsource/montserrat/latin-700.css';
+@import '@fontsource/montserrat/latin-800.css';
+@import '@fontsource/montserrat/latin-900.css';
+@import '@fontsource/jetbrains-mono/latin-400.css';
+@import '@fontsource/jetbrains-mono/latin-500.css';
+
+@import 'tailwindcss';
+
+@theme {
+	/* ---------------------------------------------------------------------
+	 * Colores
+	 *
+	 * Tinta negra sobre cualquiera de estos acentos supera 9:1 de contraste,
+	 * así que el texto es SIEMPRE tinta y nunca hay que invertirlo.
+	 *
+	 * Regla semántica: en el TABLERO, `electric` y `pink` están reservados a
+	 * los estados de celda (seleccionada / error) y no se usan de forma
+	 * decorativa. En el CHROME (HUD, botones, cabeceras) sí son decorativos.
+	 * ------------------------------------------------------------------- */
+	--color-ink: #000000;
+	--color-paper: #f0ead6;
+	--color-paper-dim: #ddd6c0;
+	--color-card: #fffdf5;
+	--color-electric: #ffff00;
+	--color-cyan: #00ffff;
+	--color-pink: #ff69b4;
+
+	/* ---------------------------------------------------------------------
+	 * Tipografía
+	 * ------------------------------------------------------------------- */
+	--font-display: 'Montserrat', ui-sans-serif, system-ui, sans-serif;
+	--font-body: 'JetBrains Mono', ui-monospace, monospace;
+
+	--text-display-lg: 4.5rem; /* 72px */
+	--text-display-lg--line-height: 1;
+	--text-display-lg--letter-spacing: -0.04em;
+	--text-display-lg--font-weight: 900;
+
+	--text-headline-lg: 3rem; /* 48px */
+	--text-headline-lg--line-height: 1.1;
+	--text-headline-lg--letter-spacing: -0.02em;
+	--text-headline-lg--font-weight: 800;
+
+	--text-headline-md: 1.5rem; /* 24px */
+	--text-headline-md--line-height: 1.2;
+	--text-headline-md--font-weight: 700;
+
+	--text-body-lg: 1.125rem; /* 18px */
+	--text-body-lg--line-height: 1.6;
+
+	--text-body-md: 1rem; /* 16px */
+	--text-body-md--line-height: 1.5;
+
+	--text-label-bold: 0.875rem; /* 14px */
+	--text-label-bold--line-height: 1;
+	--text-label-bold--font-weight: 700;
+
+	--text-caption: 0.75rem; /* 12px */
+	--text-caption--line-height: 1.4;
+	--text-caption--font-weight: 500;
+
+	/* ---------------------------------------------------------------------
+	 * Sombras duras
+	 *
+	 * Sin desenfoque y sin transparencia: el sistema simula papel apilado,
+	 * no luz ambiental.
+	 * ------------------------------------------------------------------- */
+	--shadow-brutal-xs: 2px 2px 0 0 var(--color-ink);
+	--shadow-brutal-sm: 4px 4px 0 0 var(--color-ink);
+	--shadow-brutal-md: 6px 6px 0 0 var(--color-ink);
+	--shadow-brutal-lg: 8px 8px 0 0 var(--color-ink);
+
+	/* ---------------------------------------------------------------------
+	 * Espaciado y forma
+	 * ------------------------------------------------------------------- */
+	--spacing-gutter: 24px;
+	--spacing-margin-mobile: 16px;
+	--spacing-margin-desktop: 40px;
+	/* Área táctil mínima accesible; se aplica a celdas y botones. */
+	--spacing-touch: 44px;
+
+	/* Esquinas rectas en todo el sistema. */
+	--radius-xs: 0;
+	--radius-sm: 0;
+	--radius-md: 0;
+	--radius-lg: 0;
+	--radius-xl: 0;
+	--radius-2xl: 0;
+	--radius-3xl: 0;
+	--radius-4xl: 0;
+}
+
+@layer base {
+	html {
+		/* Evita el rebote elástico: la app ocupa el viewport y no hace scroll. */
+		overscroll-behavior: none;
+		/* Elimina el retardo de 300ms al tocar en móvil. */
+		touch-action: manipulation;
+		-webkit-text-size-adjust: 100%;
+	}
+
+	body {
+		background-color: var(--color-paper);
+		color: var(--color-ink);
+		font-family: var(--font-body);
+		font-size: var(--text-body-md);
+		line-height: 1.5;
+		/* Retícula de puntos: el "papel cuadriculado" sobre el que se juega. */
+		background-image: radial-gradient(
+			color-mix(in srgb, var(--color-ink) 22%, transparent) 1.5px,
+			transparent 1.5px
+		);
+		background-size: var(--spacing-gutter) var(--spacing-gutter);
+	}
+
+	h1,
+	h2,
+	h3 {
+		font-family: var(--font-display);
+		text-transform: uppercase;
+	}
+
+	/*
+	 * Foco visible y coherente con el sistema: un contorno de tinta grueso,
+	 * sin radio. Necesario para la navegación por teclado (CLAUDE.md §11).
+	 */
+	:focus-visible {
+		outline: 3px solid var(--color-ink);
+		outline-offset: 3px;
+	}
+}
+
+/* -------------------------------------------------------------------------
+ * Utilidades del sistema
+ *
+ * Se definen aquí, y no como sopa de clases repetida en cada componente,
+ * para cumplir CLAUDE.md §10 (tokens centralizados, sin clases arbitrarias).
+ * ----------------------------------------------------------------------- */
+
+/* Superficie base de tarjeta/celda: papel con borde de tinta y sombra dura. */
+@utility brutal-card {
+	background-color: var(--color-card);
+	border: 3px solid var(--color-ink);
+	box-shadow: var(--shadow-brutal-sm);
+}
+
+/* Contenedor sin relleno propio (columnas del tablero, paneles del HUD). */
+@utility brutal-panel {
+	border: 4px solid var(--color-ink);
+	box-shadow: var(--shadow-brutal-md);
+}
+
+/* -------------------------------------------------------------------------
+ * Estados de celda del tablero
+ *
+ * La semántica vive aquí y no dispersa en los componentes: `VerbCell` (T3.1)
+ * sólo mapea estado → clase. Amarillo y rosa están reservados a estos dos
+ * estados y no se usan de forma decorativa dentro del tablero.
+ * ----------------------------------------------------------------------- */
+
+@utility cell-neutral {
+	background-color: var(--color-card);
+	border: 3px solid var(--color-ink);
+	box-shadow: var(--shadow-brutal-sm);
+}
+
+@utility cell-selected {
+	background-color: var(--color-electric);
+	border: 4px solid var(--color-ink);
+	box-shadow: var(--shadow-brutal-xs);
+	/* Desplazada hacia su sombra: se ve y se siente "presionada". */
+	translate: 2px 2px;
+}
+
+@utility cell-resolved {
+	background-color: var(--color-paper-dim);
+	border: 3px dashed var(--color-ink);
+	box-shadow: none;
+	opacity: 0.55;
+	pointer-events: none;
+}
+
+@utility cell-error {
+	background-color: var(--color-pink);
+	border: 4px solid var(--color-ink);
+	box-shadow: var(--shadow-brutal-sm);
+
+	@media (prefers-reduced-motion: no-preference) {
+		animation: brutal-shake 180ms ease-in-out;
+	}
+}
+
+@keyframes brutal-shake {
+	0%,
+	100% {
+		translate: 0 0;
+	}
+	25% {
+		translate: -4px 0;
+	}
+	75% {
+		translate: 4px 0;
+	}
+}
+
+/*
+ * Gesto de presión física: el elemento se desplaza hacia la sombra y ésta se
+ * reduce, como si se hundiera en el papel. Sólo se anima cuando el usuario no
+ * ha pedido reducir movimiento.
+ */
+@utility brutal-press {
+	transition:
+		transform 80ms ease-out,
+		box-shadow 80ms ease-out;
+
+	&:hover {
+		transform: translate(2px, 2px);
+		box-shadow: var(--shadow-brutal-xs);
+	}
+
+	&:active {
+		transform: translate(4px, 4px);
+		box-shadow: none;
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		transition: none;
+
+		&:hover,
+		&:active {
+			transform: none;
+			box-shadow: var(--shadow-brutal-sm);
+		}
+	}
+}
+
+/*
+ * Inclinaciones de "papel tirado sobre la mesa".
+ *
+ * Se aplican de forma determinista según el índice de la celda (nunca al
+ * azar), para que un re-render no cambie la inclinación y el tablero no
+ * "tiemble" al resolverse una tríada.
+ *
+ * En móvil se neutralizan: con celdas pequeñas y juntas, la rotación reduce
+ * la precisión del área táctil y provoca solapamientos.
+ */
+@utility paper-tilt-1 {
+	rotate: -2deg;
+
+	@media (width < 40rem) {
+		rotate: none;
+	}
+}
+
+@utility paper-tilt-2 {
+	rotate: 1deg;
+
+	@media (width < 40rem) {
+		rotate: none;
+	}
+}
+
+@utility paper-tilt-3 {
+	rotate: 2deg;
+
+	@media (width < 40rem) {
+		rotate: none;
+	}
+}
+
+@utility paper-tilt-4 {
+	rotate: -1deg;
+
+	@media (width < 40rem) {
+		rotate: none;
+	}
+}
