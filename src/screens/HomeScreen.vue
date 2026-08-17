@@ -46,6 +46,14 @@ function play(): void {
 		params: {mode: selectedMode.value, difficulty: selectedDifficulty.value},
 	})
 }
+
+/**
+ * El Modo Práctica usa el mismo nivel elegido arriba, pero ignora el modo: no es
+ * competitivo, no tiene reloj ni ranking (`MECHANICS.md` §4).
+ */
+function practice(): void {
+	router.push({name: 'practice', params: {difficulty: selectedDifficulty.value}})
+}
 </script>
 
 <template>
@@ -87,7 +95,12 @@ function play(): void {
 			</fieldset>
 		</div>
 
-		<ChoiceButton variant="primary" class="home-play" @click="play">Jugar</ChoiceButton>
+		<div class="home-actions">
+			<ChoiceButton variant="primary" class="home-play" @click="play">Jugar</ChoiceButton>
+			<ChoiceButton variant="secondary" class="home-practice" @click="practice">
+				Practicar sin reloj
+			</ChoiceButton>
+		</div>
 	</section>
 </template>
 
@@ -161,10 +174,21 @@ function play(): void {
 	min-height: 2.4em;
 }
 
-.home-play {
+.home-actions {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--spacing-gutter) / 2);
 	width: 100%;
 	max-width: 32rem;
+}
+
+.home-play {
+	width: 100%;
 	font-size: var(--text-headline-md);
+}
+
+.home-practice {
+	width: 100%;
 }
 
 @media (width >= 40rem) {

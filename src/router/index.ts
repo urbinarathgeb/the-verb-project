@@ -32,9 +32,12 @@ const routes: RouteRecordRaw[] = [
 		},
 	},
 	{
-		path: '/practice',
+		// El pool de preguntas sale del nivel, igual que en una partida.
+		path: '/practice/:difficulty',
 		name: 'practice',
 		component: () => import('@/screens/PracticeScreen.vue'),
+		props: true,
+		beforeEnter: (to) => (isDifficulty(to.params.difficulty) ? true : {name: 'home'}),
 	},
 	{
 		path: '/result',
