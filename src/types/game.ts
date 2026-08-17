@@ -71,6 +71,26 @@ export interface BoardState {
 }
 
 /**
+ * Qué ocurrió al pulsar una celda.
+ *
+ * El tablero no sabe de puntaje, tiempo ni fin de ronda: devuelve lo que pasó y
+ * el motor de juego (Fase 2) decide las consecuencias, que son distintas en cada
+ * modo — en Objetivo un fallo sólo penaliza tiempo, en Precisión termina la
+ * partida (`MECHANICS.md` §2 y §3).
+ */
+export type SelectionOutcome =
+	/** La celda no era seleccionable (su verbo ya estaba resuelto). */
+	| {readonly type: 'ignored'}
+	/** Selección registrada; la tríada aún está incompleta. */
+	| {readonly type: 'selected'}
+	/** Se pulsó la celda ya seleccionada de esa columna y se retiró la selección. */
+	| {readonly type: 'deselected'}
+	/** Tríada correcta. `cellIds` son las celdas que salen del tablero. */
+	| {readonly type: 'match'; readonly verbId: number; readonly cellIds: readonly CellId[]}
+	/** Tríada incorrecta. `cellIds` son las celdas que deben mostrar el error. */
+	| {readonly type: 'mismatch'; readonly cellIds: readonly CellId[]}
+
+/**
  * Estado de la partida.
  *
  * `won` y `lost` son terminales; sólo desde ellos se construye un
