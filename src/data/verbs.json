@@ -1,0 +1,746 @@
+[
+  {
+    "id": 1,
+    "present": "be",
+    "past": "was / were",
+    "participle": "been",
+    "level": "beginner"
+  },
+  {
+    "id": 2,
+    "present": "become",
+    "past": "became",
+    "participle": "become",
+    "level": "beginner"
+  },
+  {
+    "id": 3,
+    "present": "begin",
+    "past": "began",
+    "participle": "begun",
+    "level": "beginner"
+  },
+  {
+    "id": 4,
+    "present": "break",
+    "past": "broke",
+    "participle": "broken",
+    "level": "beginner"
+  },
+  {
+    "id": 5,
+    "present": "bring",
+    "past": "brought",
+    "participle": "brought",
+    "level": "beginner"
+  },
+  {
+    "id": 6,
+    "present": "build",
+    "past": "built",
+    "participle": "built",
+    "level": "beginner"
+  },
+  {
+    "id": 7,
+    "present": "buy",
+    "past": "bought",
+    "participle": "bought",
+    "level": "beginner"
+  },
+  {
+    "id": 8,
+    "present": "catch",
+    "past": "caught",
+    "participle": "caught",
+    "level": "beginner"
+  },
+  {
+    "id": 9,
+    "present": "choose",
+    "past": "chose",
+    "participle": "chosen",
+    "level": "beginner"
+  },
+  {
+    "id": 10,
+    "present": "come",
+    "past": "came",
+    "participle": "come",
+    "level": "beginner"
+  },
+  {
+    "id": 11,
+    "present": "cost",
+    "past": "cost",
+    "participle": "cost",
+    "level": "beginner"
+  },
+  {
+    "id": 12,
+    "present": "cut",
+    "past": "cut",
+    "participle": "cut",
+    "level": "beginner"
+  },
+  {
+    "id": 13,
+    "present": "do",
+    "past": "did",
+    "participle": "done",
+    "level": "beginner"
+  },
+  {
+    "id": 14,
+    "present": "draw",
+    "past": "drew",
+    "participle": "drawn",
+    "level": "beginner"
+  },
+  {
+    "id": 15,
+    "present": "drink",
+    "past": "drank",
+    "participle": "drunk",
+    "level": "beginner"
+  },
+  {
+    "id": 16,
+    "present": "drive",
+    "past": "drove",
+    "participle": "driven",
+    "level": "beginner"
+  },
+  {
+    "id": 17,
+    "present": "eat",
+    "past": "ate",
+    "participle": "eaten",
+    "level": "beginner"
+  },
+  {
+    "id": 18,
+    "present": "fall",
+    "past": "fell",
+    "participle": "fallen",
+    "level": "beginner"
+  },
+  {
+    "id": 19,
+    "present": "feel",
+    "past": "felt",
+    "participle": "felt",
+    "level": "beginner"
+  },
+  {
+    "id": 20,
+    "present": "find",
+    "past": "found",
+    "participle": "found",
+    "level": "beginner"
+  },
+  {
+    "id": 21,
+    "present": "forget",
+    "past": "forgot",
+    "participle": "forgotten",
+    "level": "beginner"
+  },
+  {
+    "id": 22,
+    "present": "get",
+    "past": "got",
+    "participle": "got / gotten",
+    "level": "beginner"
+  },
+  {
+    "id": 23,
+    "present": "give",
+    "past": "gave",
+    "participle": "given",
+    "level": "beginner"
+  },
+  {
+    "id": 24,
+    "present": "go",
+    "past": "went",
+    "participle": "gone",
+    "level": "beginner"
+  },
+  {
+    "id": 25,
+    "present": "have",
+    "past": "had",
+    "participle": "had",
+    "level": "beginner"
+  },
+  {
+    "id": 26,
+    "present": "hear",
+    "past": "heard",
+    "participle": "heard",
+    "level": "beginner"
+  },
+  {
+    "id": 27,
+    "present": "keep",
+    "past": "kept",
+    "participle": "kept",
+    "level": "beginner"
+  },
+  {
+    "id": 28,
+    "present": "know",
+    "past": "knew",
+    "participle": "known",
+    "level": "beginner"
+  },
+  {
+    "id": 29,
+    "present": "leave",
+    "past": "left",
+    "participle": "left",
+    "level": "beginner"
+  },
+  {
+    "id": 30,
+    "present": "lose",
+    "past": "lost",
+    "participle": "lost",
+    "level": "beginner"
+  },
+  {
+    "id": 31,
+    "present": "make",
+    "past": "made",
+    "participle": "made",
+    "level": "beginner"
+  },
+  {
+    "id": 32,
+    "present": "meet",
+    "past": "met",
+    "participle": "met",
+    "level": "beginner"
+  },
+  {
+    "id": 33,
+    "present": "pay",
+    "past": "paid",
+    "participle": "paid",
+    "level": "beginner"
+  },
+  {
+    "id": 34,
+    "present": "put",
+    "past": "put",
+    "participle": "put",
+    "level": "beginner"
+  },
+  {
+    "id": 35,
+    "present": "read",
+    "past": "read",
+    "participle": "read",
+    "level": "beginner"
+  },
+  {
+    "id": 36,
+    "present": "run",
+    "past": "ran",
+    "participle": "run",
+    "level": "beginner"
+  },
+  {
+    "id": 37,
+    "present": "say",
+    "past": "said",
+    "participle": "said",
+    "level": "beginner"
+  },
+  {
+    "id": 38,
+    "present": "see",
+    "past": "saw",
+    "participle": "seen",
+    "level": "beginner"
+  },
+  {
+    "id": 39,
+    "present": "send",
+    "past": "sent",
+    "participle": "sent",
+    "level": "beginner"
+  },
+  {
+    "id": 40,
+    "present": "sit",
+    "past": "sat",
+    "participle": "sat",
+    "level": "beginner"
+  },
+  {
+    "id": 41,
+    "present": "sleep",
+    "past": "slept",
+    "participle": "slept",
+    "level": "beginner"
+  },
+  {
+    "id": 42,
+    "present": "speak",
+    "past": "spoke",
+    "participle": "spoken",
+    "level": "beginner"
+  },
+  {
+    "id": 43,
+    "present": "spend",
+    "past": "spent",
+    "participle": "spent",
+    "level": "beginner"
+  },
+  {
+    "id": 44,
+    "present": "take",
+    "past": "took",
+    "participle": "taken",
+    "level": "beginner"
+  },
+  {
+    "id": 45,
+    "present": "tell",
+    "past": "told",
+    "participle": "told",
+    "level": "beginner"
+  },
+  {
+    "id": 46,
+    "present": "think",
+    "past": "thought",
+    "participle": "thought",
+    "level": "beginner"
+  },
+  {
+    "id": 47,
+    "present": "understand",
+    "past": "understood",
+    "participle": "understood",
+    "level": "beginner"
+  },
+  {
+    "id": 48,
+    "present": "wear",
+    "past": "wore",
+    "participle": "worn",
+    "level": "beginner"
+  },
+  {
+    "id": 49,
+    "present": "write",
+    "past": "wrote",
+    "participle": "written",
+    "level": "beginner"
+  },
+
+  {
+    "id": 50,
+    "present": "beat",
+    "past": "beat",
+    "participle": "beaten",
+    "level": "intermediate"
+  },
+  {
+    "id": 51,
+    "present": "bend",
+    "past": "bent",
+    "participle": "bent",
+    "level": "intermediate"
+  },
+  {
+    "id": 52,
+    "present": "bite",
+    "past": "bit",
+    "participle": "bitten",
+    "level": "intermediate"
+  },
+  {
+    "id": 53,
+    "present": "blow",
+    "past": "blew",
+    "participle": "blown",
+    "level": "intermediate"
+  },
+  {
+    "id": 54,
+    "present": "burn",
+    "past": "burnt",
+    "participle": "burnt",
+    "level": "intermediate"
+  },
+  {
+    "id": 55,
+    "present": "dream",
+    "past": "dreamt",
+    "participle": "dreamt",
+    "level": "intermediate"
+  },
+  {
+    "id": 56,
+    "present": "feed",
+    "past": "fed",
+    "participle": "fed",
+    "level": "intermediate"
+  },
+  {
+    "id": 57,
+    "present": "fight",
+    "past": "fought",
+    "participle": "fought",
+    "level": "intermediate"
+  },
+  {
+    "id": 58,
+    "present": "fly",
+    "past": "flew",
+    "participle": "flown",
+    "level": "intermediate"
+  },
+  {
+    "id": 59,
+    "present": "forgive",
+    "past": "forgave",
+    "participle": "forgiven",
+    "level": "intermediate"
+  },
+  {
+    "id": 60,
+    "present": "freeze",
+    "past": "froze",
+    "participle": "frozen",
+    "level": "intermediate"
+  },
+  {
+    "id": 61,
+    "present": "grow",
+    "past": "grew",
+    "participle": "grown",
+    "level": "intermediate"
+  },
+  {
+    "id": 62,
+    "present": "hang",
+    "past": "hung",
+    "participle": "hung",
+    "level": "intermediate"
+  },
+  {
+    "id": 63,
+    "present": "hide",
+    "past": "hid",
+    "participle": "hidden",
+    "level": "intermediate"
+  },
+  {
+    "id": 64,
+    "present": "hit",
+    "past": "hit",
+    "participle": "hit",
+    "level": "intermediate"
+  },
+  {
+    "id": 65,
+    "present": "hold",
+    "past": "held",
+    "participle": "held",
+    "level": "intermediate"
+  },
+  {
+    "id": 66,
+    "present": "hurt",
+    "past": "hurt",
+    "participle": "hurt",
+    "level": "intermediate"
+  },
+  {
+    "id": 67,
+    "present": "lead",
+    "past": "led",
+    "participle": "led",
+    "level": "intermediate"
+  },
+  {
+    "id": 68,
+    "present": "learn",
+    "past": "learnt",
+    "participle": "learnt",
+    "level": "intermediate"
+  },
+  {
+    "id": 69,
+    "present": "lend",
+    "past": "lent",
+    "participle": "lent",
+    "level": "intermediate"
+  },
+  {
+    "id": 70,
+    "present": "light",
+    "past": "lit",
+    "participle": "lit",
+    "level": "intermediate"
+  },
+  {
+    "id": 71,
+    "present": "mean",
+    "past": "meant",
+    "participle": "meant",
+    "level": "intermediate"
+  },
+  {
+    "id": 72,
+    "present": "ride",
+    "past": "rode",
+    "participle": "ridden",
+    "level": "intermediate"
+  },
+  {
+    "id": 73,
+    "present": "ring",
+    "past": "rang",
+    "participle": "rung",
+    "level": "intermediate"
+  },
+  {
+    "id": 74,
+    "present": "rise",
+    "past": "rose",
+    "participle": "risen",
+    "level": "intermediate"
+  },
+  {
+    "id": 75,
+    "present": "sell",
+    "past": "sold",
+    "participle": "sold",
+    "level": "intermediate"
+  },
+  {
+    "id": 76,
+    "present": "set",
+    "past": "set",
+    "participle": "set",
+    "level": "intermediate"
+  },
+  {
+    "id": 77,
+    "present": "shake",
+    "past": "shook",
+    "participle": "shaken",
+    "level": "intermediate"
+  },
+  {
+    "id": 78,
+    "present": "shine",
+    "past": "shone",
+    "participle": "shone",
+    "level": "intermediate"
+  },
+  {
+    "id": 79,
+    "present": "shoot",
+    "past": "shot",
+    "participle": "shot",
+    "level": "intermediate"
+  },
+  {
+    "id": 80,
+    "present": "show",
+    "past": "showed",
+    "participle": "shown",
+    "level": "intermediate"
+  },
+  {
+    "id": 81,
+    "present": "sing",
+    "past": "sang",
+    "participle": "sung",
+    "level": "intermediate"
+  },
+  {
+    "id": 82,
+    "present": "steal",
+    "past": "stole",
+    "participle": "stolen",
+    "level": "intermediate"
+  },
+  {
+    "id": 83,
+    "present": "swim",
+    "past": "swam",
+    "participle": "swum",
+    "level": "intermediate"
+  },
+  {
+    "id": 84,
+    "present": "throw",
+    "past": "threw",
+    "participle": "thrown",
+    "level": "intermediate"
+  },
+  {
+    "id": 85,
+    "present": "wake",
+    "past": "woke",
+    "participle": "woken",
+    "level": "intermediate"
+  },
+  {
+    "id": 86,
+    "present": "win",
+    "past": "won",
+    "participle": "won",
+    "level": "intermediate"
+  },
+
+  {
+    "id": 87,
+    "present": "arise",
+    "past": "arose",
+    "participle": "arisen",
+    "level": "advanced"
+  },
+  {
+    "id": 88,
+    "present": "awake",
+    "past": "awoke",
+    "participle": "awoken",
+    "level": "advanced"
+  },
+  {
+    "id": 89,
+    "present": "bear",
+    "past": "bore",
+    "participle": "born",
+    "level": "advanced"
+  },
+  {
+    "id": 90,
+    "present": "bet",
+    "past": "bet",
+    "participle": "bet",
+    "level": "advanced"
+  },
+  {
+    "id": 91,
+    "present": "bind",
+    "past": "bound",
+    "participle": "bound",
+    "level": "advanced"
+  },
+  {
+    "id": 92,
+    "present": "bleed",
+    "past": "bled",
+    "participle": "bled",
+    "level": "advanced"
+  },
+  {
+    "id": 93,
+    "present": "breed",
+    "past": "bred",
+    "participle": "bred",
+    "level": "advanced"
+  },
+  {
+    "id": 94,
+    "present": "burst",
+    "past": "burst",
+    "participle": "burst",
+    "level": "advanced"
+  },
+  {
+    "id": 95,
+    "present": "creep",
+    "past": "crept",
+    "participle": "crept",
+    "level": "advanced"
+  },
+  {
+    "id": 96,
+    "present": "deal",
+    "past": "dealt",
+    "participle": "dealt",
+    "level": "advanced"
+  },
+  {
+    "id": 97,
+    "present": "dig",
+    "past": "dug",
+    "participle": "dug",
+    "level": "advanced"
+  },
+  {
+    "id": 98,
+    "present": "let",
+    "past": "let",
+    "participle": "let",
+    "level": "advanced"
+  },
+  {
+    "id": 99,
+    "present": "lie",
+    "past": "lay",
+    "participle": "lain",
+    "level": "advanced"
+  },
+  {
+    "id": 100,
+    "present": "shrink",
+    "past": "shrank",
+    "participle": "shrunk",
+    "level": "advanced"
+  },
+  {
+    "id": 101,
+    "present": "shut",
+    "past": "shut",
+    "participle": "shut",
+    "level": "advanced"
+  },
+  {
+    "id": 102,
+    "present": "sink",
+    "past": "sank",
+    "participle": "sunk",
+    "level": "advanced"
+  },
+  {
+    "id": 103,
+    "present": "slide",
+    "past": "slid",
+    "participle": "slid",
+    "level": "advanced"
+  },
+  {
+    "id": 104,
+    "present": "stand",
+    "past": "stood",
+    "participle": "stood",
+    "level": "advanced"
+  },
+  {
+    "id": 105,
+    "present": "stick",
+    "past": "stuck",
+    "participle": "stuck",
+    "level": "advanced"
+  },
+  {
+    "id": 106,
+    "present": "teach",
+    "past": "taught",
+    "participle": "taught",
+    "level": "advanced"
+  }
+]
