@@ -1,0 +1,12 @@
+dist
+coverage
+node_modules
+pnpm-lock.yaml
+
+# Skills de terceros: se versionan tal como vienen del origen.
+.claude/skills
+
+# Documentación del proyecto: se mantiene a mano. Prettier solo cambiaría el
+# estilo de viñetas y la alineación de tablas, generando diffs enormes que
+# ocultarían los cambios reales de contenido en la revisión.
+*.md

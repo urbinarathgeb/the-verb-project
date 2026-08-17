@@ -1,0 +1,18 @@
+{
+  "useTabs": true,
+  "semi": false,
+  "singleQuote": true,
+  "bracketSpacing": false,
+  "printWidth": 100,
+  "trailingComma": "all",
+  "vueIndentScriptAndStyle": false,
+  "overrides": [
+    {
+      "files": ["*.json", "*.jsonc", "*.md", "*.yml", "*.yaml"],
+      "options": {
+        "useTabs": false,
+        "tabWidth": 2
+      }
+    }
+  ]
+}
