@@ -29,8 +29,11 @@ El resultado de cada jugada se anuncia a los lectores de pantalla, ya que de otr
 | --- | --- | --- | --- |
 | **Contrarreloj** | Cuenta atrás desde el límite del nivel | Alcanzar el objetivo de aciertos | Que se acabe el tiempo |
 | **Precisión** | Cronómetro ascendente, sin límite | Vaciar el tablero | Un solo error |
+| **Práctica** | Sin reloj | No se gana ni se pierde | — |
 
 En **Contrarreloj** los errores no terminan la partida, pero restan tiempo (2 s o 3 s según el nivel) y ese tiempo también cuenta para la clasificación.
+
+El **modo Práctica** es el relajado: muestra una forma verbal y pregunta por otra, con tres alternativas. Cualquiera de las tres formas puede aparecer en el enunciado y cualquiera de las otras dos como pregunta, así que también se practican los saltos difíciles como participio → pasado. El enunciado indica siempre de qué forma parte, porque hay verbos que se escriben igual en varias. No hay ranking: alimenta el progreso personal y una racha que sube con cada acierto y se reinicia al fallar.
 
 En **Precisión** el primer error termina la ronda de inmediato. La métrica es el **ritmo**: verbos por minuto, `(aciertos / segundos) × 60`. Premia acertar mucho y rápido, así que jugar despacio para acumular aciertos no compensa.
 
@@ -48,10 +51,11 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 
 - `/` — menú: elegir modo y nivel.
 - `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos.
+- `/practice/:difficulty` — modo Práctica, sin reloj.
 - `/result` — desenlace con las métricas del modo jugado.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
 
-El resto de rutas (`/practice`, `/ranking`, `/auth/callback`) existen pero aún son placeholders.
+El resto de rutas (`/ranking`, `/auth/callback`) existen pero aún son placeholders.
 
 ## Desarrollo
 
