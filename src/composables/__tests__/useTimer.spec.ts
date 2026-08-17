@@ -1,5 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
-import {effectScope} from 'vue'
+import {effectScope, shallowRef} from 'vue'
 import {useTimer} from '../useTimer'
 
 const SECOND = 1000
@@ -476,5 +476,53 @@ describe('useTimer — limpieza', () => {
 		timer.pause()
 
 		expect(vi.getTimerCount()).toBe(0)
+	})
+})
+
+describe('useTimer — límite reactivo', () => {
+	it('acepta un `ref` como límite', () => {
+		const limit = shallowRef<number | null>(10 * SECOND)
+		const timer = useTimer({limitMs: limit})
+
+		expect(timer.remainingMs.value).toBe(10 * SECOND)
+	})
+
+	/**
+	 * El store crea el reloj antes de saber el modo y el nivel; el límite sólo se
+	 * conoce al arrancar la partida.
+	 */
+	it('recalcula el tiempo restante al cambiar el límite', () => {
+		const limit = shallowRef<number | null>(null)
+		const timer = useTimer({limitMs: limit})
+
+		expect(timer.remainingMs.value).toBeNull()
+
+		limit.value = 90 * SECOND
+
+		expect(timer.remainingMs.value).toBe(90 * SECOND)
+		expect(timer.progress.value).toBe(0)
+	})
+
+	it('acepta un getter como límite', () => {
+		const timer = useTimer({limitMs: () => 30 * SECOND})
+		timer.start()
+
+		advance(10 * SECOND)
+
+		expect(timer.remainingMs.value).toBe(20 * SECOND)
+	})
+
+	it('expira según el límite vigente en ese momento', () => {
+		const onExpire = vi.fn()
+		const limit = shallowRef<number | null>(60 * SECOND)
+		const timer = useTimer({limitMs: limit, onExpire})
+		timer.start()
+		advance(10 * SECOND)
+
+		limit.value = 5 * SECOND
+		advance(100)
+
+		expect(timer.isExpired.value).toBe(true)
+		expect(onExpire).toHaveBeenCalledTimes(1)
 	})
 })

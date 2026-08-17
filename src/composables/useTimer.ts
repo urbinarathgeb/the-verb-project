@@ -1,4 +1,12 @@
-import {computed, getCurrentScope, onScopeDispose, shallowRef, type ComputedRef} from 'vue'
+import {
+	computed,
+	getCurrentScope,
+	onScopeDispose,
+	shallowRef,
+	toValue,
+	type ComputedRef,
+	type MaybeRefOrGetter,
+} from 'vue'
 
 /**
  * Reloj de partida: cuenta regresiva para el Modo Objetivo y ascendente para el
@@ -16,8 +24,12 @@ export interface UseTimerOptions {
 	/**
 	 * Duración de la cuenta regresiva en milisegundos. `null` (por defecto) hace
 	 * que el reloj cuente hacia adelante sin límite.
+	 *
+	 * Acepta un `ref` o un getter porque el límite depende del modo y del nivel,
+	 * que no se conocen hasta que el jugador arranca la partida, mientras que el
+	 * reloj se crea antes (en el setup del store).
 	 */
-	limitMs?: number | null
+	limitMs?: MaybeRefOrGetter<number | null>
 	/** Cada cuánto se refresca el valor mostrado. No afecta a la precisión. */
 	tickMs?: number
 	/** Se invoca una sola vez, cuando una cuenta regresiva llega a 0. */
@@ -57,6 +69,11 @@ const DEFAULT_TICK_MS = 100
 export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
 	const {limitMs = null, tickMs = DEFAULT_TICK_MS, onExpire} = options
 
+	/** Lee el límite actual. Es una función porque la opción puede ser reactiva. */
+	function currentLimitMs(): number | null {
+		return toValue(limitMs)
+	}
+
 	/** Marca de inicio del tramo en curso, o `null` si el reloj está parado. */
 	const startedAt = shallowRef<number | null>(null)
 	/** Tiempo de los tramos ya cerrados por pausas anteriores. */
@@ -86,16 +103,19 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
 
 		// Con límite, el tiempo consumido se acota: al expirar, el tiempo de la
 		// partida es exactamente el límite, no el instante del tick que lo detectó.
-		return limitMs === null ? total : Math.min(total, limitMs)
+		const limit = currentLimitMs()
+		return limit === null ? total : Math.min(total, limit)
 	})
 
-	const remainingMs = computed<number | null>(() =>
-		limitMs === null ? null : Math.max(0, limitMs - elapsedMs.value),
-	)
+	const remainingMs = computed<number | null>(() => {
+		const limit = currentLimitMs()
+		return limit === null ? null : Math.max(0, limit - elapsedMs.value)
+	})
 
-	const progress = computed<number | null>(() =>
-		limitMs === null || limitMs <= 0 ? null : Math.min(1, elapsedMs.value / limitMs),
-	)
+	const progress = computed<number | null>(() => {
+		const limit = currentLimitMs()
+		return limit === null || limit <= 0 ? null : Math.min(1, elapsedMs.value / limit)
+	})
 
 	function syncNow(): void {
 		nowMs.value = Date.now()
@@ -108,8 +128,9 @@ export function useTimer(options: UseTimerOptions = {}): UseTimerReturn {
 	}
 
 	function checkExpiry(): void {
-		if (limitMs === null || expired.value) return
-		if (elapsedMs.value < limitMs) return
+		const limit = currentLimitMs()
+		if (limit === null || expired.value) return
+		if (elapsedMs.value < limit) return
 
 		expired.value = true
 		pause()
