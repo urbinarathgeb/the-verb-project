@@ -1,5 +1,6 @@
 import {createRouter, createWebHistory, type RouteRecordRaw} from 'vue-router'
 import HomeScreen from '@/screens/HomeScreen.vue'
+import {isDifficulty, isGameMode} from '@/types/game'
 
 /**
  * Rutas de la aplicación.
@@ -16,12 +17,19 @@ const routes: RouteRecordRaw[] = [
 	},
 	{
 		// `mode` ∈ target | precision — `difficulty` ∈ easy | medium | hard.
-		// La validación de los valores se añade en T3.2, junto con el guard que
-		// redirige al menú si la combinación no existe en `data/levels.ts`.
 		path: '/play/:mode/:difficulty',
 		name: 'play',
 		component: () => import('@/screens/GameScreen.vue'),
 		props: true,
+		/**
+		 * Los parámetros de ruta son texto libre: una URL escrita a mano o un enlace
+		 * viejo podría pedir un modo o un nivel que no existen. En vez de montar la
+		 * pantalla y fallar dentro, se vuelve al menú.
+		 */
+		beforeEnter: (to) => {
+			if (isGameMode(to.params.mode) && isDifficulty(to.params.difficulty)) return true
+			return {name: 'home'}
+		},
 	},
 	{
 		path: '/practice',

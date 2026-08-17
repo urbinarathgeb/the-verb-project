@@ -16,10 +16,23 @@ export const GAME_MODES = ['target', 'precision'] as const
 
 export type GameMode = (typeof GAME_MODES)[number]
 
+/**
+ * Valida un modo llegado de la URL. Los parámetros de ruta son texto libre: sin
+ * esta comprobación, `/play/lo-que-sea/easy` montaría la pantalla de juego.
+ */
+export function isGameMode(value: unknown): value is GameMode {
+	return typeof value === 'string' && GAME_MODES.some((mode) => mode === value)
+}
+
 /** Niveles de dificultad configurables en `data/levels.ts` (T0.7). */
 export const DIFFICULTIES = ['easy', 'medium', 'hard'] as const
 
 export type Difficulty = (typeof DIFFICULTIES)[number]
+
+/** Valida un nivel llegado de la URL, por el mismo motivo que `isGameMode`. */
+export function isDifficulty(value: unknown): value is Difficulty {
+	return typeof value === 'string' && DIFFICULTIES.some((difficulty) => difficulty === value)
+}
 
 /**
  * Identificador estable de celda, con formato `${verbId}:${form}`.
