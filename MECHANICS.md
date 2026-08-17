@@ -42,8 +42,10 @@ Se ordena descendente por `ritmo`. Esta fórmula combina ambas variables en un s
 ## 4. Modo: Práctica / Aprendizaje
 
 - No usa el tablero de 3 columnas. En su lugar, presenta preguntas de opción múltiple:
-    - Se muestra un verbo + una forma solicitada (ej. "speak → participio").
-    - 3 alternativas, 1 correcta + 2 distractores (formas de otros verbos del set).
+    - Se muestra **una forma verbal cualquiera** y se pregunta por **otra cualquiera** de las dos restantes: presente → participio, participio → pasado, pasado → presente, etc. Las **seis combinaciones** son posibles. Restringir el enunciado al presente dejaría sin ejercitar los saltos que más cuestan, como reconocer un participio y recuperar su pasado.
+    - **La forma del enunciado se etiqueta siempre** (ej. `spoke (pasado) → participio`). No es un adorno: hay verbos cuyo texto coincide entre formas —`read` en presente y pasado, `cut` en las tres—, y sin la etiqueta el jugador no sabría desde dónde se le pregunta.
+    - 3 alternativas, 1 correcta + 2 distractores, tomados siempre de **la misma forma solicitada** en otros verbos del set. Si vinieran de otra forma, el jugador acertaría por descarte sin saber el verbo.
+    - **Cuando dos formas de un verbo coinciden, la pregunta se genera igualmente.** Es frecuente —la mayoría de los irregulares ingleses comparten pasado y participio—, y produce preguntas como `felt (participio) → ¿cuál es el pasado?` cuya respuesta es `felt`. No se filtran: que ambas formas sean idénticas **es parte de lo que hay que aprender** de ese verbo, y verlo repetido lo enseña.
 - **Sin ranking global** — este modo alimenta el progreso individual del usuario (verbos dominados, % de aciertos por verbo), no una tabla de posiciones.
 - **Resuelto:** el modo **no es cronometrado** (es el modo de aprendizaje relajado, sin presión de tiempo) y **sí tiene mecánica de racha (streak)** visible como refuerzo motivacional, además del tracking de dominio a largo plazo en `user_progress`.
 
