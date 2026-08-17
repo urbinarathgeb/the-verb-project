@@ -72,6 +72,17 @@ export const LEVELS = Object.freeze({
  */
 export const MIN_MATCHES_FOR_RANKING = 5
 
+/**
+ * Cuántos aciertos necesita un verbo para considerarse dominado en el Modo
+ * Práctica, y con qué porcentaje mínimo.
+ *
+ * Un solo acierto puede ser suerte —hay tres opciones, así que acertar al azar
+ * ocurre una de cada tres veces—, y sin exigir porcentaje bastaría con insistir
+ * hasta acertar. Son parámetros de balance: se espera ajustarlos al usar el modo.
+ */
+export const MASTERY_MIN_CORRECT = 3
+export const MASTERY_MIN_ACCURACY = 0.8
+
 export function getLevelConfig(difficulty: Difficulty): LevelConfig {
 	return LEVELS[difficulty]
 }
