@@ -49,5 +49,35 @@ export default defineConfigWithVueTs(
 		},
 	},
 
+	{
+		name: 'app/componentes-no-acceden-a-pinia',
+		files: ['src/components/**/*.{ts,vue}', 'src/screens/**/*.{ts,vue}'],
+		rules: {
+			/**
+			 * `CLAUDE.md` §6: los componentes de UI nunca acceden a un store de Pinia
+			 * directamente, siempre a través del composable que actúa de interfaz
+			 * pública (`useGameEngine`, `useAuth`…). Como regla escrita dependía de la
+			 * disciplina; aquí se vuelve exigible.
+			 */
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['@/stores/*', '**/stores/*'],
+							message:
+								'Los componentes no acceden a Pinia directamente (CLAUDE.md §6). Usa el composable que envuelve el store, por ejemplo useGameEngine().',
+						},
+						{
+							group: ['pinia'],
+							message:
+								'La interacción con Pinia vive en stores/ y en los composables que los envuelven (CLAUDE.md §6).',
+						},
+					],
+				},
+			],
+		},
+	},
+
 	skipFormatting,
 )
