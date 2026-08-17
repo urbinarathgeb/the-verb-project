@@ -250,13 +250,22 @@ Todo aquí es testeable sin montar Vue. Es la parte con mayor densidad de tests.
 
 > Antes de escribir cualquier SQL, cargar la skill `supabase-postgres-best-practices`.
 
-- [ ] **T5.1 — Cliente.** `@supabase/supabase-js`, `lib/supabase.ts`, `.env.local` con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (ya cubierto por el patrón `*.local` del `.gitignore`), tipado en `env.d.ts`.
-- [ ] **T5.2 — Schema + RLS.** Migraciones en `supabase/migrations/`:
+- [x] **T5.1 — Cliente.** `@supabase/supabase-js`, `lib/supabase.ts`, `.env.local` con `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` (ya cubierto por el patrón `*.local` del `.gitignore`), tipado en `env.d.ts`.
+    - **`supabase` puede ser `null`.** Sin credenciales la app arranca igual, en modo invitado y sin persistencia (`CLAUDE.md` §8). Devolver `null` en vez de lanzar obliga a quien lo consuma a contemplar el caso «sin backend», que es un estado legítimo y no un error. Las variables se tipan como opcionales en `env.d.ts` por el mismo motivo.
+    - `.env.example` documenta las dos variables y advierte de que la `service_role` key **nunca** debe entrar en el proyecto: salta RLS por completo.
+    - `src/types/database.ts` es provisional y escrito a mano; se sustituye por `pnpm supabase gen types typescript --linked` en cuanto haya proyecto enlazado.
+    - Se descartó **Drizzle** tras evaluarlo: su query builder abre conexión directa a Postgres, así que en una app sin backend la cadena de conexión acabaría en el bundle y, peor, las peticiones no llevarían el JWT del usuario — RLS dejaría de aplicarse. `drizzle-kit` sólo para migraciones tampoco compensa: RLS, triggers e índices se escriben en SQL igual, y el tipado ya lo cubre el generador de Supabase.
+- [x] **T5.2 — Schema + RLS.** Migraciones en `supabase/migrations/`:
     - `profiles(id → auth.users, display_name, avatar_url)`, poblada por trigger al registrarse (P3). RLS: lectura pública, escritura sólo del dueño.
     - `game_sessions(id, user_id NOT NULL, mode, level, time_ms, errors, verbs_matched, completed_at)` con `check` en `mode` y `time_ms > 0` (P2). RLS: insert sólo con `auth.uid() = user_id`; lectura pública para alimentar el ranking.
     - `user_progress(user_id, verb_id, hits, misses, last_practiced_at)` con PK compuesta. RLS: sólo el dueño lee y escribe.
     - Índices para las consultas de ranking: `(mode, level, time_ms)` y `(mode, level, verbs_matched, time_ms)`.
     - **Nota:** el catálogo de verbos se mantiene **en el cliente** (`verbs.json`), no en la base. Es estático, pequeño y no requiere consulta remota; `user_progress.verb_id` referencia el id del JSON. Se migrará a tabla sólo si el catálogo pasa a ser editable.
+    - Todas las políticas usan **`(select auth.uid())`** y no `auth.uid()` a secas. La skill `supabase-postgres-best-practices` lo marca como impacto alto: la forma envuelta se evalúa una vez por consulta en lugar de una vez por fila.
+    - **Las partidas son inmutables:** no hay políticas de `update` ni `delete` sobre `game_sessions`, así que un resultado no se puede retocar a posteriori para escalar en el ranking.
+    - El trigger de alta de perfil es `security definer` con `set search_path = ''` —escribe en nombre de un usuario que aún no tiene sesión— y es idempotente (`on conflict do nothing`). Poblar el perfil por trigger y no desde el cliente elimina el hueco en el que un usuario recién registrado no tiene perfil y el ranking no puede nombrarlo.
+    - **La migración se validó contra un Postgres real**, no sólo se escribió: se levantó una base temporal con stubs de `auth.users` y `auth.uid()`, se aplicó la migración completa, y se comprobó que RLS queda activo en las tres tablas, que las cinco políticas existen con el `cmd` correcto, que ninguna usa `auth.uid()` sin envolver, que los índices se crean, que los `check` rechazan modo inválido, nivel inválido, `time_ms = 0` y errores negativos, y que el trigger crea el perfil con el nombre y el avatar de los metadatos. La base temporal se eliminó después.
+    - **Pendiente de aplicar en Supabase:** requiere un proyecto creado y `supabase link`. La skill `supabase-postgres-best-practices` no estaba instalada pese a figurar en `CLAUDE.md` §12; se instaló (`supabase/agent-skills`, 152 kB, sólo markdown, sin ejecutables) antes de escribir una línea de SQL.
 - [ ] **T5.3 — Auth con Google.** `stores/auth.ts` + `composables/useAuth.ts`, ruta `/auth/callback`, restauración de sesión al cargar, y **modo invitado plenamente funcional** (nada bloquea el juego sin login).
 - [ ] **T5.4 — Persistencia de partidas y ranking.** Al terminar una partida, si hay usuario autenticado se inserta en `game_sessions` (en Objetivo, sólo si alcanzó el objetivo). Vista o RPC por modo que devuelve el **mejor resultado por usuario**: Objetivo → `time_ms` ascendente; Precisión → ritmo descendente filtrando `verbs_matched >= 5`. `RankingScreen` + `RankingTable`, con pestañas por modo y nivel.
 - [ ] **T5.5 — Sincronizar `user_progress`.** El Modo Práctica hace upsert incremental por verbo para usuarios autenticados.
@@ -374,6 +383,14 @@ Todo cambio respecto al plan original se documenta aquí con el qué, el cómo y
 - **Cómo:** al acertar, `useBoard` reemplaza o retira las tres celdas en el mismo instante. El `SelectionOutcome` de tipo `match` devuelve los `cellIds` que salen, para que la UI (T3) los anime con `<TransitionGroup>` usando el `CellId` como clave: la celda saliente se atenúa mientras la entrante aparece, sin que el dominio tenga que retener estado muerto ni esperar a un temporizador. `getCellStatus` sigue contemplando `resolved` por si una celda de un verbo resuelto llega a consultarse durante esa transición.
 - **Porqué:** `MECHANICS.md` §1 dice que las celdas acertadas «se marcan como resueltas (ej. bloqueadas/atenuadas)» y P1 dice que se reemplazan por una tríada nueva. Con reposición dinámica ambas cosas no pueden coexistir en el modelo: o la celda sigue ahí atenuada, o entra otra en su lugar. Resolverlo en la capa de animación en vez de en el dominio evita que el motor de juego arrastre un estado intermedio que sólo existe para la vista.
 - **Impacto:** `types/game.ts` (`SelectionOutcome`), `composables/useBoard.ts`. Condiciona T3.3: la cuadrícula del tablero debe animar salidas y entradas por `CellId`, no por índice de fila.
+
+### D7 — Práctica dirigida: aparcada como feature futura
+
+- **Qué:** un modo de práctica que no sortee del pool completo del nivel, sino que **priorice los verbos que el jugador falla o aún no domina**. Hoy el Modo Práctica sortea uniformemente de todo el pool del nivel elegido, así que un verbo ya dominado sale con la misma probabilidad que uno que se falla siempre.
+- **Cómo (cuando se implemente):** el store `progress` ya guarda aciertos, errores y `masteredVerbIds` por verbo, así que la pieza que falta es sólo el filtro o el sesgo del sorteo en `createQuestion`. Opciones a evaluar: pool restringido a los no dominados, sorteo ponderado por tasa de error, o un modo «repaso de fallos» aparte.
+- **Porqué se aparca:** no estaba en el plan de la Fase 4 y añade una decisión de diseño real —si se excluyen los dominados, el jugador deja de repasarlos y los olvida; la repetición espaciada existe precisamente por eso—. Merece decidirse con datos de uso, no antes.
+- **Preguntas abiertas:** ¿es un modo aparte o una opción del actual? ¿los verbos dominados desaparecen del todo o sólo bajan de frecuencia? ¿debería reaparecer un verbo dominado pasado un tiempo sin practicarlo (`lastPracticedAt` ya se registra para esto)?
+- **Impacto:** ninguno en el plan actual. También queda pendiente que el resumen de nivel del menú, hoy redactado en términos de partida («objetivo de 8 · 90 s»), diga algo útil cuando la intención es practicar.
 
 ### P6 — Cómo se registran los errores y qué clasifica en el Modo Precisión
 
