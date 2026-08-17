@@ -26,7 +26,9 @@
 
 - Cronómetro corre **hacia adelante** (no hay límite de tiempo fijo); el pool de verbos puede ser mayor al que un jugador logra completar en una sesión — el objetivo es emparejar **la mayor cantidad posible antes de fallar**, no necesariamente agotar el tablero completo.
 - **Un solo error termina la ronda inmediatamente** (fail state). No hay margen de error.
-- Como consecuencia directa de esta regla: **toda partida registrada en este modo tiene, por definición, cero errores.**
+- Como consecuencia directa de esta regla: **toda partida registrada en este modo tiene, por definición, cero errores.** El fallo que termina la ronda es el **terminador** de la partida, no una penalización acumulable, y por eso no se contabiliza (ver `PLAN.md`, Bitácora de Decisiones, P6).
+- **Clasifican ambos desenlaces**, tanto terminar por fallo como agotar el pool del nivel, siempre que se supere el piso mínimo de aciertos. Lo normal en este modo es terminar fallando —el pool es mayor de lo que se completa en una sesión—, así que exigir victoria dejaría el ranking prácticamente vacío.
+- **Victoria:** vaciar el tablero, es decir, emparejar todos los verbos del pool del nivel sin fallar.
 - **Métrica de ranking — ritmo (verbos por minuto):**
 
 ```
