@@ -148,6 +148,24 @@
  * para cumplir CLAUDE.md §10 (tokens centralizados, sin clases arbitrarias).
  * ----------------------------------------------------------------------- */
 
+/*
+ * Texto disponible para lectores de pantalla pero no visible.
+ *
+ * No se usa `display: none` ni `visibility: hidden`: ambos lo ocultan también a
+ * la tecnología asistiva, que es justo lo contrario de lo que se busca.
+ */
+@utility visually-hidden {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip-path: inset(50%);
+	white-space: nowrap;
+	border: 0;
+}
+
 /* Superficie base de tarjeta/celda: papel con borde de tinta y sombra dura. */
 @utility brutal-card {
 	background-color: var(--color-card);
