@@ -10,3 +10,10 @@ pnpm-lock.yaml
 # estilo de viñetas y la alineación de tablas, generando diffs enormes que
 # ocultarían los cambios reales de contenido en la revisión.
 *.md
+
+# Archivo generado por `supabase gen types`: se reescribe entero en cada
+# regeneración, así que formatearlo solo produciría diffs contra el generador.
+src/types/database.ts
+
+# Estado local de la CLI de Supabase (proyecto enlazado). No se versiona.
+supabase/.temp

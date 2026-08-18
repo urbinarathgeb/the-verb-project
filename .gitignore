@@ -49,3 +49,6 @@ __screenshots__/
 
 # Vite
 *.timestamp-*-*.mjs
+# Estado local de la CLI de Supabase: guarda la referencia del proyecto
+# enlazado, que es propia de cada máquina y no del repositorio.
+supabase/.temp
