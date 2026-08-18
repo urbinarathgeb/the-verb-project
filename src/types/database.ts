@@ -1,92 +1,299 @@
 /**
- * Tipos de la base de datos.
+ * Tipos de la base de datos, GENERADOS. No editar a mano.
  *
- * **Este archivo se genera**, no se edita a mano:
+ * Se regeneran desde el schema real del proyecto enlazado tras cada migración:
  *
- * ```sh
- * pnpm supabase gen types typescript --linked > src/types/database.ts
- * ```
+ *   pnpm supabase gen types typescript --linked | sed '/^\[WARN\]/d' > src/types/database.ts
  *
- * Hasta que exista un proyecto de Supabase enlazado, se mantiene esta versión
- * escrita a mano que refleja las migraciones de `supabase/migrations/`. Sirve
- * para tipar el cliente y para que el proyecto compile sin backend.
+ * El `sed` no es opcional: pnpm escribe su aviso de versión de Node en la salida
+ * estándar, y sin filtrarlo acaba dentro del archivo y rompe la compilación.
  */
 
-import type {Difficulty, GameMode} from './game'
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[]
 
-export interface Database {
-	/**
-	 * Metadatos que `supabase-js` espera encontrar en el tipo generado. El
-	 * generador los incluye; aquí se reproducen a mano mientras el tipo es
-	 * provisional.
-	 */
-	__InternalSupabase: {
-		PostgrestVersion: '12'
-	}
-	public: {
-		Tables: {
-			profiles: {
-				Row: {
-					id: string
-					display_name: string | null
-					avatar_url: string | null
-					created_at: string
-				}
-				Insert: {
-					id: string
-					display_name?: string | null
-					avatar_url?: string | null
-					created_at?: string
-				}
-				Update: {
-					display_name?: string | null
-					avatar_url?: string | null
-				}
-			}
-			game_sessions: {
-				Row: {
-					id: string
-					user_id: string
-					mode: GameMode
-					level: Difficulty
-					time_ms: number
-					errors: number
-					verbs_matched: number
-					completed_at: string
-				}
-				Insert: {
-					id?: string
-					user_id: string
-					mode: GameMode
-					level: Difficulty
-					time_ms: number
-					errors?: number
-					verbs_matched: number
-					completed_at?: string
-				}
-				Update: never
-			}
-			user_progress: {
-				Row: {
-					user_id: string
-					verb_id: number
-					hits: number
-					misses: number
-					last_practiced_at: string
-				}
-				Insert: {
-					user_id: string
-					verb_id: number
-					hits?: number
-					misses?: number
-					last_practiced_at?: string
-				}
-				Update: {
-					hits?: number
-					misses?: number
-					last_practiced_at?: string
-				}
-			}
-		}
-	}
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.15"
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  public: {
+    Tables: {
+      game_sessions: {
+        Row: {
+          completed_at: string
+          errors: number
+          id: string
+          level: string
+          mode: string
+          status: string
+          time_ms: number
+          user_id: string
+          verbs_matched: number
+        }
+        Insert: {
+          completed_at?: string
+          errors?: number
+          id?: string
+          level: string
+          mode: string
+          status: string
+          time_ms: number
+          user_id: string
+          verbs_matched: number
+        }
+        Update: {
+          completed_at?: string
+          errors?: number
+          id?: string
+          level?: string
+          mode?: string
+          status?: string
+          time_ms?: number
+          user_id?: string
+          verbs_matched?: number
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          display_name: string | null
+          id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          display_name?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      user_progress: {
+        Row: {
+          hits: number
+          last_practiced_at: string
+          misses: number
+          user_id: string
+          verb_id: number
+        }
+        Insert: {
+          hits?: number
+          last_practiced_at?: string
+          misses?: number
+          user_id: string
+          verb_id: number
+        }
+        Update: {
+          hits?: number
+          last_practiced_at?: string
+          misses?: number
+          user_id?: string
+          verb_id?: number
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      precision_ranking: {
+        Row: {
+          avatar_url: string | null
+          completed_at: string | null
+          display_name: string | null
+          level: string | null
+          pace: number | null
+          time_ms: number | null
+          user_id: string | null
+          verbs_matched: number | null
+        }
+        Relationships: []
+      }
+      target_ranking: {
+        Row: {
+          avatar_url: string | null
+          completed_at: string | null
+          display_name: string | null
+          errors: number | null
+          level: string | null
+          time_ms: number | null
+          user_id: string | null
+          verbs_matched: number | null
+        }
+        Relationships: []
+      }
+    }
+    Functions: {
+      record_practice_progress: { Args: { entries: Json }; Returns: undefined }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  graphql_public: {
+    Enums: {},
+  },
+  public: {
+    Enums: {},
+  },
+} as const
