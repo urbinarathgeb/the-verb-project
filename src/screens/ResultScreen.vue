@@ -3,6 +3,7 @@ import {computed, onBeforeUnmount, onMounted} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
 import {useGameEngine} from '@/composables/useGameEngine'
+import {useRanking} from '@/composables/useRanking'
 import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
 import {formatDuration, formatPace} from '@/lib/format'
 
@@ -16,6 +17,7 @@ import {formatDuration, formatPace} from '@/lib/format'
  */
 const router = useRouter()
 const engine = useGameEngine()
+const {lastSaveOutcome, saveResult} = useRanking()
 
 const result = computed(() => engine.result.value)
 
@@ -76,6 +78,33 @@ const rankingNote = computed(() => {
 	return ''
 })
 
+/**
+ * Qué pasó con el guardado, en palabras.
+ *
+ * `null` significa que no hay nada que decir —la partida se guardó y ya lo dice
+ * la nota del ranking— para no llenar la pantalla de confirmaciones obvias.
+ */
+const saveNote = computed(() => {
+	switch (lastSaveOutcome.value) {
+		case 'guest':
+			return 'Juegas como invitado: este resultado no se guarda ni entra en la clasificación.'
+		case 'offline':
+			return 'Sin conexión con el servidor: este resultado no se ha guardado.'
+		case 'error':
+			return 'No pudimos guardar este resultado. La partida cuenta igual, pero no aparecerá en la clasificación.'
+		case 'saved':
+			return 'Resultado guardado.'
+		// `not-persisted` es una derrota en Contrarreloj, y `rankingNote` ya lo
+		// explica mejor que un mensaje sobre el guardado.
+		default:
+			return null
+	}
+})
+
+function goToRanking(): void {
+	router.push({name: 'ranking'})
+}
+
 function playAgain(): void {
 	const current = result.value
 	if (current === null) return
@@ -92,7 +121,17 @@ function goHome(): void {
 
 onMounted(() => {
 	// Entrar por URL a `/result` sin haber jugado no muestra nada útil.
-	if (result.value === null) router.replace({name: 'home'})
+	if (result.value === null) {
+		void router.replace({name: 'home'})
+		return
+	}
+
+	/*
+	 * El guardado no bloquea la pantalla: el resultado ya está calculado y se
+	 * muestra al instante, y la nota sobre la persistencia aparece cuando la
+	 * escritura termine. Que falle la red no debe impedir ver la partida.
+	 */
+	void saveResult(result.value)
 })
 
 // La partida ya se mostró: se descarta al salir para no arrastrarla a la
@@ -120,16 +159,15 @@ onBeforeUnmount(() => {
 		<p v-if="rankingNote" class="result-note">{{ rankingNote }}</p>
 
 		<!--
-			Modo invitado: nada se persiste (`CLAUDE.md` §8). Se avisa aquí, cuando
-			hay un resultado que se perdería, y no antes de jugar.
+			Estado de la persistencia. Se dice aquí, cuando hay un resultado concreto
+			en juego, y no antes de jugar (`CLAUDE.md` §8).
 		-->
-		<p class="result-guest">
-			Estás jugando como invitado: este resultado no se guarda ni entra en la clasificación.
-		</p>
+		<p v-if="saveNote !== null" class="result-guest">{{ saveNote }}</p>
 
 		<div class="result-actions">
 			<ChoiceButton variant="primary" @click="playAgain">Jugar otra vez</ChoiceButton>
-			<ChoiceButton variant="secondary" @click="goHome">Volver al menú</ChoiceButton>
+			<ChoiceButton variant="secondary" @click="goToRanking">Clasificación</ChoiceButton>
+			<ChoiceButton variant="ghost" @click="goHome">Volver al menú</ChoiceButton>
 		</div>
 	</section>
 </template>

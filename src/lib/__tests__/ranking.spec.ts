@@ -1,5 +1,12 @@
 import {describe, expect, it} from 'vitest'
-import {calculatePace, isEligibleForRanking} from '../ranking'
+import {
+	calculatePace,
+	isEligibleForRanking,
+	isPersistable,
+	toRankingEntries,
+	type RankingRow,
+} from '../ranking'
+import {FALLBACK_DISPLAY_NAME} from '@/lib/auth'
 import {MIN_MATCHES_FOR_RANKING} from '@/data/levels'
 import type {FinishedStatus, GameMode, SessionResult} from '@/types/game'
 
@@ -130,5 +137,146 @@ describe('isEligibleForRanking — cobertura de modos', () => {
 		const result = makeResult({mode, status: 'won', verbsMatched: MIN_MATCHES_FOR_RANKING})
 
 		expect(typeof isEligibleForRanking(result)).toBe('boolean')
+	})
+})
+
+function makeRow(overrides: Partial<RankingRow> = {}): RankingRow {
+	return {
+		user_id: 'uuid-1',
+		display_name: 'Ada',
+		avatar_url: null,
+		time_ms: 60 * SECOND,
+		verbs_matched: 10,
+		completed_at: '2026-01-01T00:00:00.000Z',
+		...overrides,
+	}
+}
+
+describe('isPersistable', () => {
+	/**
+	 * Guardarse y clasificar no son lo mismo. Una partida de Precisión floja forma
+	 * parte del historial del jugador aunque la vista la deje fuera del ranking.
+	 */
+	it('guarda las partidas de Precisión aunque no lleguen al piso del ranking', () => {
+		const result = makeResult({mode: 'precision', verbsMatched: 1})
+
+		expect(isPersistable(result)).toBe(true)
+		expect(isEligibleForRanking(result)).toBe(false)
+	})
+
+	it('guarda las victorias de Contrarreloj', () => {
+		expect(isPersistable(makeResult({mode: 'target', status: 'won'}))).toBe(true)
+	})
+
+	/** Una derrota en Contrarreloj no tiene tiempo que comparar: no aporta nada. */
+	it('descarta las derrotas de Contrarreloj', () => {
+		expect(isPersistable(makeResult({mode: 'target', status: 'lost'}))).toBe(false)
+	})
+})
+
+describe('toRankingEntries', () => {
+	it('numera las posiciones desde 1', () => {
+		const entries = toRankingEntries(
+			[
+				makeRow({user_id: 'a', time_ms: 40 * SECOND}),
+				makeRow({user_id: 'b', time_ms: 50 * SECOND}),
+			],
+			'target',
+		)
+
+		expect(entries.map((entry) => entry.position)).toEqual([1, 2])
+	})
+
+	/**
+	 * Con dos tiempos idénticos, numerarlos 1 y 2 sugeriría una diferencia que no
+	 * existe: la base desempata por fecha sólo para que el orden sea estable.
+	 */
+	it('los empates comparten posición y la siguiente salta', () => {
+		const entries = toRankingEntries(
+			[
+				makeRow({user_id: 'a', time_ms: 40 * SECOND}),
+				makeRow({user_id: 'b', time_ms: 40 * SECOND}),
+				makeRow({user_id: 'c', time_ms: 55 * SECOND}),
+			],
+			'target',
+		)
+
+		expect(entries.map((entry) => entry.position)).toEqual([1, 1, 3])
+	})
+
+	it('en Precisión empata por ritmo, no por tiempo', () => {
+		const entries = toRankingEntries(
+			[
+				makeRow({user_id: 'a', pace: 12, time_ms: 60 * SECOND}),
+				makeRow({user_id: 'b', pace: 12, time_ms: 30 * SECOND}),
+			],
+			'precision',
+		)
+
+		expect(entries.map((entry) => entry.position)).toEqual([1, 1])
+	})
+
+	/** El orden lo fija la base, que es quien conoce la regla de desempate. */
+	it('respeta el orden de llegada sin reordenar', () => {
+		const entries = toRankingEntries(
+			[
+				makeRow({user_id: 'b', time_ms: 90 * SECOND}),
+				makeRow({user_id: 'a', time_ms: 10 * SECOND}),
+			],
+			'target',
+		)
+
+		expect(entries.map((entry) => entry.userId)).toEqual(['b', 'a'])
+	})
+
+	it('usa el ritmo que entrega la vista de Precisión', () => {
+		const entries = toRankingEntries([makeRow({pace: 7.5})], 'precision')
+
+		expect(entries[0]?.pace).toBe(7.5)
+	})
+
+	/** La vista de Objetivo no trae ritmo, porque allí no clasifica. */
+	it('calcula el ritmo cuando la vista no lo trae', () => {
+		const entries = toRankingEntries([makeRow({verbs_matched: 10, time_ms: 60 * SECOND})], 'target')
+
+		expect(entries[0]?.pace).toBe(10)
+	})
+
+	/**
+	 * Los tipos generados declaran anulable todo lo que sale de una vista, porque
+	 * Postgres no propaga `not null` a través de ella. Una fila sin usuario o sin
+	 * tiempo no es una posición, es un dato roto: se omite en vez de pintar huecos.
+	 */
+	it('descarta las filas sin usuario, sin tiempo o sin aciertos', () => {
+		const entries = toRankingEntries(
+			[
+				makeRow({user_id: null}),
+				makeRow({time_ms: null}),
+				makeRow({verbs_matched: null}),
+				makeRow({user_id: 'ok'}),
+			],
+			'target',
+		)
+
+		expect(entries).toHaveLength(1)
+		expect(entries[0]?.userId).toBe('ok')
+	})
+
+	it('cae al nombre de respaldo si el perfil no tiene ninguno', () => {
+		const sinNombre = toRankingEntries([makeRow({display_name: null})], 'target')
+		const enBlanco = toRankingEntries([makeRow({display_name: '   '})], 'target')
+
+		expect(sinNombre[0]?.displayName).toBe(FALLBACK_DISPLAY_NAME)
+		expect(enBlanco[0]?.displayName).toBe(FALLBACK_DISPLAY_NAME)
+	})
+
+	it('recorta los espacios del nombre', () => {
+		expect(toRankingEntries([makeRow({display_name: '  Ada  '})], 'target')[0]?.displayName).toBe(
+			'Ada',
+		)
+	})
+
+	it('devuelve una lista vacía sin filas', () => {
+		expect(toRankingEntries([], 'target')).toEqual([])
 	})
 })
