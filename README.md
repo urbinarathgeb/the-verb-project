@@ -53,9 +53,43 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 - `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos.
 - `/practice/:difficulty` — modo Práctica, sin reloj.
 - `/result` — desenlace con las métricas del modo jugado.
+- `/ranking` — clasificación por modo y nivel.
+- `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige al menú.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
 
-El resto de rutas (`/ranking`, `/auth/callback`) existen pero aún son placeholders.
+## Clasificación
+
+Es pública: se puede consultar sin cuenta. Hay **seis tablas** —dos modos por tres niveles— porque comparar un tiempo de nivel fácil con uno de difícil no significaría nada: cambian el tamaño del tablero y el objetivo.
+
+Cada tabla muestra el **mejor resultado de cada jugador**, no todas sus partidas, para que quien más juegue no copie la tabla con sus propios intentos. «Mejor» significa cosas distintas por modo: en Contrarreloj el menor tiempo, en Precisión el mayor ritmo en verbos por minuto. Los empates comparten posición.
+
+Qué se guarda al terminar una partida, si has iniciado sesión:
+
+| Situación | Se guarda | Entra al ranking |
+| --- | --- | --- |
+| Contrarreloj, objetivo alcanzado | Sí | Sí |
+| Contrarreloj, se acabó el tiempo | No | No |
+| Precisión, 5 aciertos o más | Sí | Sí |
+| Precisión, menos de 5 aciertos | Sí | No |
+| Cualquiera, como invitado | No | No |
+
+Una partida de Precisión floja se guarda igual porque forma parte de tu historial, aunque no clasifique. Una derrota en Contrarreloj no se guarda: no tiene tiempo que comparar.
+
+## Cuenta e inicio de sesión
+
+Se puede jugar **sin cuenta**, y es un modo de primera clase: todos los modos, todos los niveles y el Modo Práctica funcionan igual. Lo único que cambia es que el progreso vive en memoria y se pierde al recargar, y que las partidas no entran al ranking.
+
+Iniciar sesión con Google se ofrece desde el menú. Si la aplicación arranca sin credenciales de Supabase, el acceso ni se muestra: no tendría a dónde ir, así que la app se comporta como si fuera de invitado permanente en lugar de ofrecer un botón que falla.
+
+Al cerrar sesión se borra el progreso acumulado en memoria, para que no quede atribuido a quien siga jugando en el mismo navegador.
+
+### Progreso del Modo Práctica
+
+Con sesión iniciada, los aciertos y fallos por verbo se guardan y se recuperan al volver. Se envían **agrupados cada pocos segundos**, y también al salir de la pantalla o al mandar la pestaña a segundo plano, así que no hace falta esperar a nada antes de cerrar.
+
+Lo que se manda son **incrementos**, no totales: «suma un acierto al verbo 7». Eso permite practicar en el móvil y en el portátil sin que uno pise lo aprendido en el otro. Si falla la red, lo pendiente se conserva y se reintenta en el siguiente envío.
+
+Lo practicado **como invitado no se sube** al iniciar sesión después: no se pidió atribuírselo a esa cuenta.
 
 ## Desarrollo
 
@@ -65,6 +99,19 @@ Requiere [pnpm](https://pnpm.io) y Node 22.18+ o 24.12+.
 pnpm install
 pnpm dev
 ```
+
+### Variables de entorno
+
+Opcionales: sin ellas la app arranca y se juega en modo invitado. Se copian de `.env.example` a `.env.local`, que no se versiona.
+
+| Variable | Qué es |
+| --- | --- |
+| `VITE_SUPABASE_URL` | URL del proyecto de Supabase |
+| `VITE_SUPABASE_ANON_KEY` | Clave anónima, pública por diseño. La seguridad la aplica RLS en la base de datos, no el secreto de esta clave |
+
+La clave `service_role` **no** se usa en este proyecto: salta RLS, y el código corre íntegramente en el navegador.
+
+Para que el acceso con Google funcione hace falta además, en el panel de Supabase: activar el proveedor Google con su client ID y secret, poner `http://localhost:5173` como **Site URL** y añadir `http://localhost:5173/**` a **Redirect URLs**.
 
 | Comando | Qué hace |
 | --- | --- |
@@ -79,7 +126,7 @@ pnpm dev
 
 ## Stack
 
-Vue 3.5 (Composition API con `<script setup>`), TypeScript estricto, Vite, Tailwind CSS 4, Pinia y Vitest. Supabase (Auth + Postgres) está previsto para la fase de persistencia y ranking.
+Vue 3.5 (Composition API con `<script setup>`), TypeScript estricto, Vite, Tailwind CSS 4, Pinia y Vitest. Supabase aporta Auth (Google) y Postgres; el schema y sus políticas RLS viven en `supabase/migrations/`.
 
 ## Documentación del proyecto
 
