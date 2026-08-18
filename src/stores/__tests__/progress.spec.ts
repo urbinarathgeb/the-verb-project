@@ -78,9 +78,18 @@ describe('useProgressStore — estado inicial', () => {
 		})
 	})
 
-	/** La skill de Pinia exige devolver todo el estado propio del setup store. */
+	/**
+	 * La skill de Pinia exige devolver **todo** el estado propio de un setup
+	 * store: lo que no se devuelve no aparece en DevTools ni lo ven los plugins.
+	 * Esta lista debe crecer con cada `ref` nuevo, y por eso se compara exacta.
+	 */
 	it('expone su estado en `$state`', () => {
-		expect(Object.keys(useProgressStore().$state)).toEqual(['entries'])
+		expect(Object.keys(useProgressStore().$state)).toEqual([
+			'entries',
+			'pending',
+			'isSyncing',
+			'syncError',
+		])
 	})
 })
 

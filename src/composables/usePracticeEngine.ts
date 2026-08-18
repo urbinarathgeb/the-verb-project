@@ -1,4 +1,4 @@
-import {computed, ref, shallowRef, type ComputedRef} from 'vue'
+import {computed, getCurrentScope, onScopeDispose, ref, shallowRef, type ComputedRef} from 'vue'
 import {storeToRefs} from 'pinia'
 import {
 	createQuestion,
@@ -26,7 +26,17 @@ import type {Difficulty} from '@/types/game'
 export interface UsePracticeEngineOptions {
 	/** Fuente de aleatoriedad, inyectable para tests deterministas. */
 	rng?: Rng
+	/**
+	 * Cuánto se espera antes de enviar los incrementos acumulados. Agrupar evita
+	 * una petición por respuesta sin que el progreso se quede colgando: en una
+	 * sesión de veinte preguntas la diferencia es de veinte peticiones a unas
+	 * pocas. Inyectable para que los tests no dependan del reloj real.
+	 */
+	syncDelayMs?: number
 }
+
+/** Dos segundos: lo bastante para agrupar una ráfaga de respuestas seguidas. */
+const DEFAULT_SYNC_DELAY_MS = 2000
 
 export interface UsePracticeEngineReturn {
 	question: ComputedRef<PracticeQuestion | null>
@@ -55,10 +65,60 @@ export interface UsePracticeEngineReturn {
 }
 
 export function usePracticeEngine(options: UsePracticeEngineOptions = {}): UsePracticeEngineReturn {
-	const {rng} = options
+	const {rng, syncDelayMs = DEFAULT_SYNC_DELAY_MS} = options
 
 	const progress = useProgressStore()
 	const {masteredCount} = storeToRefs(progress)
+
+	/** Temporizador del envío agrupado. */
+	let syncTimer: ReturnType<typeof setTimeout> | null = null
+
+	function cancelScheduledSync(): void {
+		if (syncTimer === null) return
+
+		clearTimeout(syncTimer)
+		syncTimer = null
+	}
+
+	function scheduleSync(): void {
+		cancelScheduledSync()
+
+		syncTimer = setTimeout(() => {
+			syncTimer = null
+			void progress.syncPending()
+		}, syncDelayMs)
+	}
+
+	/** Envía ya lo pendiente, sin esperar al temporizador. */
+	function flushSync(): void {
+		cancelScheduledSync()
+		void progress.syncPending()
+	}
+
+	/*
+	 * `visibilitychange` y no `beforeunload`: en móvil el navegador puede matar la
+	 * pestaña sin disparar nunca `beforeunload`, y entonces las últimas respuestas
+	 * se perderían. Pasar a segundo plano sí se notifica de forma fiable.
+	 */
+	function onVisibilityChange(): void {
+		if (document.visibilityState === 'hidden') flushSync()
+	}
+
+	if (typeof document !== 'undefined') {
+		document.addEventListener('visibilitychange', onVisibilityChange)
+	}
+
+	// Al salir de la pantalla se envía lo que quede: si no, las respuestas de los
+	// últimos segundos morirían con el componente.
+	if (getCurrentScope() !== undefined) {
+		onScopeDispose(() => {
+			if (typeof document !== 'undefined') {
+				document.removeEventListener('visibilitychange', onVisibilityChange)
+			}
+
+			flushSync()
+		})
+	}
 
 	const currentQuestion = shallowRef<PracticeQuestion | null>(null)
 	const chosenAnswer = ref<string | null>(null)
@@ -92,6 +152,10 @@ export function usePracticeEngine(options: UsePracticeEngineOptions = {}): UsePr
 	}
 
 	function start(difficulty: Difficulty): void {
+		// Se trae el progreso guardado antes de empezar: sin esto, un usuario que
+		// vuelve vería su recuento de verbos dominados a cero pese a tenerlos.
+		void progress.loadProgress()
+
 		pool = getVerbsForDifficulty(difficulty)
 		currentQuestion.value = null
 		chosenAnswer.value = null
@@ -118,6 +182,7 @@ export function usePracticeEngine(options: UsePracticeEngineOptions = {}): UsePr
 		bestStreakValue.value = Math.max(bestStreakValue.value, currentStreak.value)
 
 		progress.recordAnswer(current.verbId, wasCorrect)
+		scheduleSync()
 
 		return wasCorrect
 	}
