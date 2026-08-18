@@ -2,6 +2,7 @@
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
+import {useAuth} from '@/composables/useAuth'
 import {LEVELS} from '@/data/levels'
 import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/game'
 
@@ -12,6 +13,22 @@ import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/
  * (`CLAUDE.md`). El menú es la primera "pantalla de juego", no una portada.
  */
 const router = useRouter()
+
+/**
+ * La sesión sólo decora este menú: nada de lo que hay aquí depende de estar
+ * autenticado, porque el modo invitado es completo (`CLAUDE.md` §8).
+ */
+const {
+	isAuthenticated,
+	isReady,
+	canSignIn,
+	displayName,
+	avatarUrl,
+	isWorking,
+	errorMessage,
+	signInWithGoogle,
+	signOut,
+} = useAuth()
 
 /** Textos de cada modo. Los identificadores van en inglés; lo visible, en español. */
 const MODE_INFO: Record<GameMode, {label: string; description: string}> = {
@@ -27,6 +44,20 @@ const MODE_INFO: Record<GameMode, {label: string; description: string}> = {
 
 const selectedMode = ref<GameMode>('target')
 const selectedDifficulty = ref<Difficulty>('easy')
+
+/**
+ * Avatar que no cargó.
+ *
+ * Las URLs de `lh3.googleusercontent.com` fallan en la práctica —caducan, tienen
+ * límites de tasa, o el usuario quitó la foto— y entonces el navegador dibuja su
+ * icono de imagen rota, que parece un fallo de la app. Se guarda la URL en lugar
+ * de un booleano para que otra distinta tenga su propia oportunidad.
+ */
+const failedAvatarUrl = ref<string | null>(null)
+
+const showAvatar = computed(
+	() => avatarUrl.value !== null && avatarUrl.value !== failedAvatarUrl.value,
+)
 
 const modeDescription = computed(() => MODE_INFO[selectedMode.value].description)
 
@@ -53,6 +84,11 @@ function play(): void {
  */
 function practice(): void {
 	router.push({name: 'practice', params: {difficulty: selectedDifficulty.value}})
+}
+
+/** La clasificación es pública: se puede consultar sin haber iniciado sesión. */
+function goToRanking(): void {
+	router.push({name: 'ranking'})
 }
 </script>
 
@@ -100,6 +136,52 @@ function practice(): void {
 			<ChoiceButton variant="secondary" class="home-practice" @click="practice">
 				Practicar sin reloj
 			</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-practice" @click="goToRanking">
+				Ver clasificación
+			</ChoiceButton>
+		</div>
+
+		<!--
+			Cuenta. Se reserva el hueco desde el principio (`min-height`) para que
+			resolver la sesión no empuje el menú hacia arriba justo cuando el jugador
+			va a pulsar «Jugar».
+		-->
+		<div v-if="canSignIn" class="home-account">
+			<template v-if="isReady">
+				<div v-if="isAuthenticated" class="home-account-row">
+					<!-- `alt` vacío a propósito: el nombre va justo al lado, así que
+					     describir el avatar sería redundante para un lector de pantalla. -->
+					<img
+						v-if="showAvatar"
+						:src="avatarUrl ?? ''"
+						alt=""
+						width="32"
+						height="32"
+						class="home-avatar"
+						referrerpolicy="no-referrer"
+						@error="failedAvatarUrl = avatarUrl"
+					/>
+					<p class="home-account-name">{{ displayName }}</p>
+					<ChoiceButton variant="ghost" :disabled="isWorking" @click="signOut">
+						Salir
+					</ChoiceButton>
+				</div>
+
+				<div v-else class="home-account-row">
+					<p class="home-account-name">Juegas como invitado</p>
+					<ChoiceButton variant="ghost" :disabled="isWorking" @click="signInWithGoogle">
+						Entrar con Google
+					</ChoiceButton>
+				</div>
+
+				<p v-if="!isAuthenticated" class="home-account-hint">
+					Sin cuenta tu progreso no se guarda ni entras al ranking.
+				</p>
+			</template>
+
+			<p v-if="errorMessage !== null" class="home-account-error" role="alert">
+				{{ errorMessage }}
+			</p>
 		</div>
 	</section>
 </template>
@@ -189,6 +271,50 @@ function practice(): void {
 
 .home-practice {
 	width: 100%;
+}
+
+.home-account {
+	display: flex;
+	flex-direction: column;
+	gap: calc(var(--spacing-gutter) / 3);
+	width: 100%;
+	max-width: 32rem;
+	/* Alto del contenido resuelto, para que aparecer no desplace el menú. */
+	min-height: calc(var(--spacing-touch) + 2.4em);
+}
+
+.home-account-row {
+	display: flex;
+	align-items: center;
+	gap: calc(var(--spacing-gutter) / 2);
+}
+
+.home-avatar {
+	width: 32px;
+	height: 32px;
+	border: 3px solid var(--color-ink);
+	object-fit: cover;
+}
+
+.home-account-name {
+	flex: 1;
+	min-width: 0;
+	font-size: var(--text-caption);
+	/* Los nombres de Google pueden ser largos; recortar antes que romper la fila. */
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.home-account-hint {
+	font-size: var(--text-caption);
+}
+
+.home-account-error {
+	padding: calc(var(--spacing-gutter) / 3);
+	border: 3px solid var(--color-ink);
+	background-color: var(--color-pink);
+	font-size: var(--text-caption);
 }
 
 @media (width >= 40rem) {
