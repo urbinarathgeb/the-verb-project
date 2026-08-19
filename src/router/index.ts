@@ -16,6 +16,15 @@ const routes: RouteRecordRaw[] = [
 		component: HomeScreen,
 	},
 	{
+		/*
+		 * Selección de modo y nivel. Se separó de la portada porque una sola
+		 * pantalla hacía seis trabajos (`PLAN.md`, Bitácora, D14).
+		 */
+		path: '/setup',
+		name: 'setup',
+		component: () => import('@/screens/SetupScreen.vue'),
+	},
+	{
 		// `mode` ∈ target | precision — `difficulty` ∈ easy | medium | hard.
 		path: '/play/:mode/:difficulty',
 		name: 'play',

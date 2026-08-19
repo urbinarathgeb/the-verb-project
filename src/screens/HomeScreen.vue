@@ -1,27 +1,24 @@
 <script setup lang="ts">
-import {computed, ref} from 'vue'
+import {computed, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
 import GameModal from '@/components/GameModal.vue'
 import {useAuth} from '@/composables/useAuth'
-import {LEVELS} from '@/data/levels'
-import {MODE_DESCRIPTIONS, MODE_LABELS} from '@/data/modes'
+import {useProgress} from '@/composables/useProgress'
 import {ONBOARDING_SECTIONS, ONBOARDING_TITLE} from '@/data/onboarding'
-import {getVerbsForDifficulty} from '@/data/verbs'
-import {DIFFICULTIES, MENU_MODES, PRACTICE_MODE, type Difficulty, type MenuMode} from '@/types/game'
+import {VERBS} from '@/data/verbs'
 
 /**
- * Menú de entrada: elegir modo y nivel.
+ * Portada.
  *
- * No hay header ni footer: la app es un juego a pantalla completa
- * (`CLAUDE.md`). El menú es la primera "pantalla de juego", no una portada.
+ * Dejó de ser el menú de selección: elegir modo y nivel vive ahora en
+ * `/setup` (`PLAN.md`, Bitácora, D14). Lo que hace aquí no es sólo llevar a
+ * jugar, porque una pantalla cuyo único contenido es una marca y unos botones es
+ * una pantalla de trámite. Muestra **cuánto llevas aprendido**, que es la
+ * promesa de `PRODUCT.md` y hasta ahora estaba escondida tras un botón.
  */
 const router = useRouter()
 
-/**
- * La sesión sólo decora este menú: nada de lo que hay aquí depende de estar
- * autenticado, porque el modo invitado es completo (`CLAUDE.md` §8).
- */
 const {
 	isAuthenticated,
 	isReady,
@@ -34,8 +31,7 @@ const {
 	signOut,
 } = useAuth()
 
-const selectedMode = ref<MenuMode>('target')
-const selectedDifficulty = ref<Difficulty>('easy')
+const {summary, loadProgress} = useProgress()
 
 /**
  * Avatar que no cargó.
@@ -51,47 +47,26 @@ const showAvatar = computed(
 	() => avatarUrl.value !== null && avatarUrl.value !== failedAvatarUrl.value,
 )
 
-const modeDescription = computed(() => MODE_DESCRIPTIONS[selectedMode.value])
-
 /**
- * Resumen del nivel elegido, para que la dificultad no sea sólo una etiqueta.
+ * Qué enseña la portada bajo la marca.
  *
- * Empieza por el tamaño del repertorio porque es lo único que significa algo en
- * los tres casos: el nivel también decide de qué verbos pregunta el Modo
- * Dojo, y hasta ahora el resumen sólo hablaba de partida —«objetivo de 8 ·
- * 90 s»— que allí no aplica (`PLAN.md`, Bitácora, D7).
+ * Son tres situaciones distintas y no dos: quien ya practicó ve sus números,
+ * quien tiene sesión pero no ha empezado necesita saber por dónde, y quien juega
+ * como invitado no tiene progreso que mostrar porque no se guarda nada
+ * (`CLAUDE.md` §8). Sin este tercer caso, el primerizo se encontraría tres ceros
+ * y ninguna explicación.
  */
-const levelSummary = computed(() => {
-	const level = LEVELS[selectedDifficulty.value]
-	const pool = `${getVerbsForDifficulty(selectedDifficulty.value).length} verbos`
-	const size = `${level.boardSize} en pantalla`
+const state = computed(() => {
+	if (!isAuthenticated.value) return 'guest'
 
-	// El Dojo no usa tablero, así que hablar de celdas o de objetivo no aplica.
-	if (selectedMode.value === PRACTICE_MODE) return `${pool} · preguntas de este nivel`
-
-	return selectedMode.value === 'target'
-		? `${pool} · ${size} · objetivo de ${level.targetVerbs} · ${level.timeLimitMs / 1000} s`
-		: `${pool} · ${size} · hasta el primer fallo`
+	return summary.value.practiced === 0 ? 'empty' : 'progress'
 })
 
-/**
- * Arranca el modo elegido.
- *
- * El Dojo vive en otra ruta porque no usa el tablero, pero desde el menú se
- * elige igual que los demás: para el jugador es un modo más, aunque por dentro
- * sea otra pantalla y no genere ranking (`MECHANICS.md` §4).
- */
-function play(): void {
-	if (selectedMode.value === PRACTICE_MODE) {
-		router.push({name: 'practice', params: {difficulty: selectedDifficulty.value}})
-		return
-	}
-
-	router.push({
-		name: 'play',
-		params: {mode: selectedMode.value, difficulty: selectedDifficulty.value},
-	})
-}
+const stats = computed(() => [
+	{label: 'Dominados', value: `${summary.value.mastered}`, of: `de ${VERBS.length}`},
+	{label: 'Practicados', value: `${summary.value.practiced}`, of: 'verbos'},
+	{label: 'Aciertos', value: `${Math.round(summary.value.accuracy * 100)} %`, of: 'del total'},
+])
 
 /**
  * Onboarding. Se abre sólo al pulsar el botón: no se guarda ninguna marca de
@@ -99,6 +74,10 @@ function play(): void {
  * excepción para esto no compensa.
  */
 const isHelpOpen = ref(false)
+
+function goToSetup(): void {
+	router.push({name: 'setup'})
+}
 
 /** La clasificación es pública: se puede consultar sin haber iniciado sesión. */
 function goToRanking(): void {
@@ -109,66 +88,22 @@ function goToRanking(): void {
 function goToProgress(): void {
 	router.push({name: 'progress'})
 }
+
+onMounted(() => {
+	// Sin sesión no hay nada que traer y la llamada vuelve sola.
+	void loadProgress()
+})
 </script>
 
 <template>
 	<section class="home">
-		<header class="home-title brutal-card paper-tilt-1">
-			<h1 class="home-heading">The Verb Project</h1>
-			<p class="home-tagline">Empareja presente, pasado y participio.</p>
-		</header>
-
-		<div class="home-choices">
-			<fieldset class="home-group">
-				<legend class="home-legend">Modo</legend>
-				<div class="home-options">
-					<ChoiceButton
-						v-for="mode in MENU_MODES"
-						:key="mode"
-						:selected="selectedMode === mode"
-						@click="selectedMode = mode"
-					>
-						{{ MODE_LABELS[mode] }}
-					</ChoiceButton>
-				</div>
-				<p class="home-hint">{{ modeDescription }}</p>
-			</fieldset>
-
-			<fieldset class="home-group">
-				<legend class="home-legend">Nivel</legend>
-				<div class="home-options">
-					<ChoiceButton
-						v-for="difficulty in DIFFICULTIES"
-						:key="difficulty"
-						:selected="selectedDifficulty === difficulty"
-						@click="selectedDifficulty = difficulty"
-					>
-						{{ LEVELS[difficulty].label }}
-					</ChoiceButton>
-				</div>
-				<p class="home-hint">{{ levelSummary }}</p>
-			</fieldset>
-		</div>
-
-		<div class="home-actions">
-			<ChoiceButton variant="primary" class="home-play" @click="play">
-				{{ selectedMode === PRACTICE_MODE ? 'Entrar al Dojo' : 'Jugar' }}
-			</ChoiceButton>
-			<ChoiceButton variant="ghost" class="home-secondary" @click="goToRanking">
-				Ver clasificación
-			</ChoiceButton>
-			<ChoiceButton variant="ghost" class="home-secondary" @click="goToProgress">
-				Tu progreso
-			</ChoiceButton>
-			<ChoiceButton variant="ghost" class="home-secondary" @click="isHelpOpen = true">
-				¿Cómo se juega?
-			</ChoiceButton>
-		</div>
-
 		<!--
-			Cuenta. Se reserva el hueco desde el principio (`min-height`) para que
-			resolver la sesión no empuje el menú hacia arriba justo cuando el jugador
-			va a pulsar «Jugar».
+			Cuenta. Va arriba, que es donde se busca la sesión por convención: al final
+			de la pantalla quedaba a 326px por debajo del pliegue en un móvil, invisible
+			salvo que alguien se desplazara hasta el fondo del menú.
+
+			Se reserva el hueco desde el principio (`min-height`) para que resolver la
+			sesión no desplace el contenido justo cuando el jugador va a pulsar «Jugar».
 		-->
 		<div v-if="canSignIn" class="home-account">
 			<template v-if="isReady">
@@ -197,16 +132,52 @@ function goToProgress(): void {
 						Entrar con Google
 					</ChoiceButton>
 				</div>
-
-				<p v-if="!isAuthenticated" class="home-account-hint">
-					Sin cuenta tu progreso no se guarda ni entras al ranking.
-				</p>
 			</template>
 
 			<p v-if="errorMessage !== null" class="home-account-error" role="alert">
 				{{ errorMessage }}
 			</p>
 		</div>
+
+		<header class="home-title brutal-card paper-tilt-1">
+			<h1 class="home-heading">The Verb Project</h1>
+			<p class="home-tagline">Empareja presente, pasado y participio.</p>
+		</header>
+
+		<!--
+			El estado del jugador. Es lo que evita que esta pantalla sea un trámite
+			por el que se pasa sin hacer nada.
+		-->
+		<dl v-if="state === 'progress'" class="home-progress">
+			<div v-for="stat in stats" :key="stat.label" class="home-stat brutal-card">
+				<dt class="home-stat-label">{{ stat.label }}</dt>
+				<dd class="home-stat-value">{{ stat.value }}</dd>
+				<dd class="home-stat-of">{{ stat.of }}</dd>
+			</div>
+		</dl>
+
+		<p v-else-if="state === 'empty'" class="home-pitch">
+			Todavía no has practicado ningún verbo. El Dojo lleva la cuenta de cuáles dominas.
+		</p>
+
+		<p v-else class="home-pitch">
+			{{ VERBS.length }} verbos irregulares en sus tres formas. Sin cuenta puedes jugar, pero no se
+			guarda lo que aprendes.
+		</p>
+
+		<div class="home-actions">
+			<ChoiceButton variant="primary" class="home-play" @click="goToSetup">Jugar</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-secondary" @click="goToProgress">
+				Tu progreso
+			</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-secondary" @click="goToRanking">
+				Ver clasificación
+			</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-secondary" @click="isHelpOpen = true">
+				¿Cómo se juega?
+			</ChoiceButton>
+		</div>
+
 		<!--
 			Descartable: es informativo, así que se cierra con `Esc`, con el fondo y
 			con su botón. `GameModal` ya aporta el `Teleport`, la trampa de foco y la
@@ -242,39 +213,42 @@ function goToProgress(): void {
 	flex-direction: column;
 	align-items: center;
 	justify-content: flex-start;
-	gap: var(--spacing-gutter);
+	gap: calc(var(--spacing-gutter) / 2);
 	padding: var(--spacing-screen-mobile);
-	/* El menú puede desbordar en pantallas muy bajas; el tablero nunca. */
+	/* La portada puede desbordar en pantallas muy bajas; el tablero nunca. */
 	overflow-y: auto;
 }
 
 /*
- * Centrado que no se come el contenido.
+ * Dos anclajes, no uno.
  *
- * `justify-content: center` sobre un contenedor que además desplaza reparte el
- * desbordamiento arriba y abajo, pero `scrollTop` no puede ser negativo: la
- * mitad superior queda inalcanzable para siempre. Los márgenes automáticos
- * centran igual cuando el contenido cabe, y cuando no cabe lo anclan arriba,
- * que es lo que hace que se pueda llegar a todo.
+ * La cuenta y la marca se quedan **arriba**: son identidad y estado, y su sitio
+ * es el borde superior de la pantalla, no el centro. Lo que se centra en el
+ * espacio que sobra es el bloque de decisión —lo que llevas aprendido y los
+ * botones—, que es donde va la mirada y el pulgar.
  *
- * `justify-content: safe center` dice esto mismo en una línea, pero su soporte
- * en el Safari de iOS es irregular y el móvil es justo el caso a resolver.
+ * Se hace con márgenes automáticos y no con `justify-content: center` porque
+ * este contenedor también desplaza: centrar así reparte el desbordamiento arriba
+ * y abajo, y como `scrollTop` no puede ser negativo, la mitad superior quedaría
+ * inalcanzable. Cuando el contenido no cabe, los `auto` valen cero y todo se
+ * ancla arriba, que es exactamente lo que hace falta.
  */
-.home > :first-child {
+.home-progress,
+.home-pitch {
 	margin-block-start: auto;
 }
 
-.home > :last-child {
+.home-actions {
 	margin-block-end: auto;
 }
 
 .home-title {
-	padding: var(--spacing-gutter);
+	padding: calc(var(--spacing-gutter) / 2);
 	text-align: center;
 }
 
 .home-heading {
-	font-size: var(--text-headline-lg);
+	font-size: var(--text-headline-md);
 	margin: 0;
 }
 
@@ -284,78 +258,74 @@ function goToProgress(): void {
 	text-transform: none;
 }
 
-.home-choices {
+.home-progress {
 	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-gutter);
+	flex-wrap: wrap;
+	gap: calc(var(--spacing-gutter) / 3);
 	width: 100%;
 	max-width: 32rem;
+	margin-block-end: calc(var(--spacing-gutter) / 2);
 }
 
-.home-group {
+.home-stat {
 	display: flex;
 	flex-direction: column;
-	gap: calc(var(--spacing-gutter) / 2);
-	border: none;
-	padding: 0;
+	align-items: center;
+	/* Alineadas por arriba: los rótulos de la fila deben leerse a la misma altura
+	   aunque el pie de cada tarjeta tenga distinto largo. */
+	justify-content: flex-start;
+	gap: 2px;
+	flex: 1 1 5rem;
+	padding: calc(var(--spacing-gutter) / 3);
+	text-align: center;
+}
+
+.home-stat-label {
+	font-size: var(--text-caption);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	opacity: 0.7;
+}
+
+.home-stat-value {
+	font-family: var(--font-display);
+	font-size: var(--text-headline-md);
+	font-weight: 800;
+	font-variant-numeric: tabular-nums;
 	margin: 0;
 }
 
-.home-legend {
-	font-family: var(--font-display);
-	font-size: var(--text-label-bold);
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	padding: 0;
-}
-
-.home-options {
-	display: flex;
-	flex-wrap: wrap;
-	gap: calc(var(--spacing-gutter) / 2);
-}
-
-.home-options > * {
-	flex: 1 1 8rem;
-}
-
-.home-hint {
+.home-stat-of {
 	font-size: var(--text-caption);
-	min-height: 2.4em;
+	margin: 0;
+	opacity: 0.7;
+}
+
+.home-pitch {
+	width: 100%;
+	max-width: 32rem;
+	/* Separado de los botones, no pegado: encabeza el bloque, no es su subtítulo. */
+	margin-block-end: calc(var(--spacing-gutter) / 2);
+	font-size: var(--text-caption);
+	text-align: center;
 }
 
 .home-actions {
 	display: flex;
 	flex-direction: column;
+	/* Los botones respiran entre sí más que los bloques de arriba: son la zona de
+	   toque y conviene que no se lean como una lista apretada. */
 	gap: calc(var(--spacing-gutter) / 2);
 	width: 100%;
 	max-width: 32rem;
 }
 
 .home-play {
-	width: 100%;
 	font-size: var(--text-headline-md);
 }
 
 .home-secondary {
-	width: 100%;
-}
-
-.home-help {
-	display: flex;
-	flex-direction: column;
-	gap: var(--spacing-gutter);
-	text-align: left;
-}
-
-.home-help-title {
 	font-size: var(--text-label-bold);
-	margin-bottom: 4px;
-}
-
-.home-help-line {
-	font-size: var(--text-caption);
-	margin-top: 4px;
 }
 
 .home-account {
@@ -366,25 +336,36 @@ function goToProgress(): void {
 	max-width: 32rem;
 	/*
 	 * No se encoge: como hijo de un contenedor flex en columna, el reparto de
-	 * espacio lo comprimía por debajo de su contenido y la última línea del aviso
-	 * quedaba fuera de la caja, sin contar para el scroll de la pantalla.
+	 * espacio lo comprimía por debajo de su contenido y la última línea quedaba
+	 * fuera de la caja, sin contar para el scroll de la pantalla.
 	 */
 	flex-shrink: 0;
-	/* Alto del contenido resuelto, para que aparecer no desplace el menú. */
-	min-height: calc(var(--spacing-touch) + 5em);
+	/* Alto del contenido resuelto, para que aparecer no desplace la portada. */
+	min-height: var(--spacing-touch);
 }
 
 .home-account-row {
 	display: flex;
 	align-items: center;
-	gap: calc(var(--spacing-gutter) / 2);
+	gap: calc(var(--spacing-gutter) / 3);
+}
+
+/*
+ * El botón de la franja va más estrecho que un botón de acción normal: con el
+ * relleno del sistema, «Juegas como invitado» y «Entrar con Google» sumaban
+ * 350px en una fila de 343 y el nombre se recortaba a «Juegas como i…». El alto
+ * táctil de 44px no se toca; sólo cede el aire lateral.
+ */
+.home-account-row > :last-child {
+	flex: 0 0 auto;
+	padding-inline: calc(var(--spacing-gutter) / 2);
 	/*
-	 * En móvil el texto compite con un botón que no se encoge, y el recorte
-	 * pensado para nombres largos de Google acababa mutilando también la cadena
-	 * fija «Juegas como invitado» («Juegas como i…»), que es lo que ve todo el
-	 * que no ha iniciado sesión. Envolver deja el botón en su propia línea.
+	 * Y con la etiqueta un escalón por debajo del botón de acción, que es lo que
+	 * es: una acción secundaria en una franja de estado, no el botón por el que se
+	 * entra a la app.
 	 */
-	flex-wrap: wrap;
+	font-size: var(--text-caption);
+	letter-spacing: 0.02em;
 }
 
 .home-avatar {
@@ -396,20 +377,17 @@ function goToProgress(): void {
 
 .home-account-name {
 	/*
-	 * `flex-basis` mínima suficiente para el nombre: por debajo de eso el botón
-	 * se va a la línea siguiente en lugar de exprimir el texto hasta el elipsis.
+	 * El nombre cede el ancho, no el botón. Con el reparto al revés, «Entrar con
+	 * Google» se quedaba sin sitio y partía en dos líneas, y una franja de 44px
+	 * pasaba a medir 72 en la zona más cara de la pantalla.
 	 */
-	flex: 1 1 12rem;
+	flex: 1 1 auto;
 	min-width: 0;
 	font-size: var(--text-caption);
 	/* Los nombres de Google pueden ser largos; recortar antes que romper la fila. */
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;
-}
-
-.home-account-hint {
-	font-size: var(--text-caption);
 }
 
 .home-account-error {
@@ -419,10 +397,30 @@ function goToProgress(): void {
 	font-size: var(--text-caption);
 }
 
+.home-help {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-gutter);
+	text-align: left;
+}
+
+.home-help-title {
+	font-size: var(--text-label-bold);
+	margin-bottom: calc(var(--spacing-gutter) / 3);
+}
+
+.home-help-line + .home-help-line {
+	margin-top: calc(var(--spacing-gutter) / 3);
+}
+
 @media (width >= 40rem) {
 	.home {
 		padding: var(--spacing-screen-desktop);
-		gap: calc(var(--spacing-gutter) * 1.5);
+		gap: var(--spacing-gutter);
+	}
+
+	.home-title {
+		padding: var(--spacing-gutter);
 	}
 
 	.home-heading {
@@ -431,6 +429,10 @@ function goToProgress(): void {
 
 	.home-tagline {
 		font-size: var(--text-body-md);
+	}
+
+	.home-stat-value {
+		font-size: var(--text-headline-lg);
 	}
 }
 </style>

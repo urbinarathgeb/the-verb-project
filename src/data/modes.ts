@@ -25,3 +25,18 @@ export const MODE_DESCRIPTIONS: Record<MenuMode, string> = {
 	precision: 'Sin límite de tiempo, pero un solo error termina la partida.',
 	practice: 'Sin reloj y sin perder: una forma, tres opciones y una racha que cuidar.',
 }
+
+/**
+ * La regla que distingue a cada modo, en una frase corta.
+ *
+ * Existe aparte de `MODE_DESCRIPTIONS` porque cumple otra función: la
+ * descripción invita, la regla advierte. En la pantalla de selección las tres se
+ * ven a la vez, para que elegir modo sea comparar reglas y no adivinar cuál es
+ * cuál — en Supervivencia un solo error termina la partida, y eso no puede
+ * enterarse el jugador a los diez segundos de empezar.
+ */
+export const MODE_RULES: Record<MenuMode, string> = {
+	target: 'Fallar resta segundos, no elimina.',
+	precision: 'Un fallo y se acabó la partida.',
+	practice: 'Sin reloj y sin perder.',
+}
