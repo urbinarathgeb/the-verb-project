@@ -32,31 +32,31 @@ El resultado de cada jugada se anuncia a los lectores de pantalla, ya que de otr
 | Modo | Reloj | Cómo se gana | Cómo se pierde |
 | --- | --- | --- | --- |
 | **Contrarreloj** | Cuenta atrás desde el límite del nivel | Alcanzar el objetivo de aciertos | Que se acabe el tiempo |
-| **Precisión** | Cronómetro ascendente, sin límite | Vaciar el tablero | Un solo error |
-| **Práctica** | Sin reloj | No se gana ni se pierde | — |
+| **Supervivencia** | Cronómetro ascendente, sin límite | Vaciar el tablero | Un solo error |
+| **Dojo** | Sin reloj | No se gana ni se pierde | — |
 
 En **Contrarreloj** los errores no terminan la partida, pero restan tiempo (2 s o 3 s según el nivel) y ese tiempo también cuenta para la clasificación.
 
-El **modo Práctica** es el relajado: muestra una forma verbal y pregunta por otra, con tres alternativas. Cualquiera de las tres formas puede aparecer en el enunciado y cualquiera de las otras dos como pregunta, así que también se practican los saltos difíciles como participio → pasado. El enunciado indica siempre de qué forma parte, porque hay verbos que se escriben igual en varias. No hay ranking: alimenta el progreso personal y una racha que sube con cada acierto y se reinicia al fallar.
+El **Dojo** es el relajado: muestra una forma verbal y pregunta por otra, con tres alternativas. Cualquiera de las tres formas puede aparecer en el enunciado y cualquiera de las otras dos como pregunta, así que también se practican los saltos difíciles como participio → pasado. El enunciado indica siempre de qué forma parte, porque hay verbos que se escriben igual en varias. No hay ranking: alimenta el progreso personal y una racha que sube con cada acierto y se reinicia al fallar.
 
-En **Precisión** el primer error termina la ronda de inmediato. La métrica es el **ritmo**: verbos por minuto, `(aciertos / segundos) × 60`. Premia acertar mucho y rápido, así que jugar despacio para acumular aciertos no compensa.
+En **Supervivencia** el primer error termina la ronda de inmediato. La métrica es el **ritmo**: verbos por minuto, `(aciertos / segundos) × 60`. Premia acertar mucho y rápido, así que jugar despacio para acumular aciertos no compensa.
 
 ## Niveles
 
 | Nivel | Verbos del catálogo | En pantalla | Objetivo | Tiempo | Penalización |
 | --- | --- | --- | --- | --- | --- |
-| Fácil | 49 (básicos) | 6 | 8 | 90 s | −2 s |
-| Medio | 86 (básicos + intermedios) | 8 | 10 | 90 s | −2 s |
-| Difícil | 106 (catálogo completo) | 10 | 12 | 100 s | −3 s |
+| Fácil | 49 (básicos) | 6 | 16 | 90 s | −2 s |
+| Medio | 86 (básicos + intermedios) | 8 | 20 | 90 s | −2 s |
+| Difícil | 106 (catálogo completo) | 10 | 24 | 100 s | −3 s |
 
 Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el prototipo.
 
 ## Pantallas disponibles
 
-- `/` — menú: elegir modo y nivel.
+- `/` — menú: elegir modo y nivel, con un «¿Cómo se juega?» que explica el juego en tres bloques.
 - `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos y modal de desenlace al terminar.
-- `/practice/:difficulty` — modo Práctica, sin reloj.
-- `/result` — desenlace con las métricas del modo jugado. Si bates tu marca, la posición en la clasificación; si no, tu mejor marca en ese nivel.
+- `/practice/:difficulty` — Dojo, sin reloj.
+- `/result` — desenlace con las métricas del modo jugado y, si hubo fallos, un repaso de cada uno con las formas correctas. Si bates tu marca, la posición en la clasificación; si no, tu mejor marca en ese nivel.
 - `/ranking` — clasificación por modo y nivel.
 - `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige al menú.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
@@ -67,7 +67,7 @@ Es pública: se puede consultar sin cuenta. Hay **seis tablas** —dos modos por
 
 Al terminar una partida, el desenlace se anuncia **sobre el propio tablero**, que queda congelado para que se vea qué faltaba. Desde ahí se pasa al resultado, que con sesión iniciada muestra en qué puesto has quedado y avisa si has batido tu marca en ese modo y nivel.
 
-Cada tabla muestra el **mejor resultado de cada jugador**, no todas sus partidas, para que quien más juegue no copie la tabla con sus propios intentos. «Mejor» significa cosas distintas por modo: en Contrarreloj el menor tiempo, en Precisión el mayor ritmo en verbos por minuto. Los empates comparten posición.
+Cada tabla muestra el **mejor resultado de cada jugador**, no todas sus partidas, para que quien más juegue no copie la tabla con sus propios intentos. «Mejor» significa cosas distintas por modo: en Contrarreloj el menor tiempo, en Supervivencia el mayor ritmo en verbos por minuto. Los empates comparten posición.
 
 Qué se guarda al terminar una partida, si has iniciado sesión:
 
@@ -75,21 +75,21 @@ Qué se guarda al terminar una partida, si has iniciado sesión:
 | --- | --- | --- |
 | Contrarreloj, objetivo alcanzado | Sí | Sí |
 | Contrarreloj, se acabó el tiempo | No | No |
-| Precisión, 5 aciertos o más | Sí | Sí |
-| Precisión, menos de 5 aciertos | Sí | No |
+| Supervivencia, 5 aciertos o más | Sí | Sí |
+| Supervivencia, menos de 5 aciertos | Sí | No |
 | Cualquiera, como invitado | No | No |
 
-Una partida de Precisión floja se guarda igual porque forma parte de tu historial, aunque no clasifique. Una derrota en Contrarreloj no se guarda: no tiene tiempo que comparar.
+Una partida de Supervivencia floja se guarda igual porque forma parte de tu historial, aunque no clasifique. Una derrota en Contrarreloj no se guarda: no tiene tiempo que comparar.
 
 ## Cuenta e inicio de sesión
 
-Se puede jugar **sin cuenta**, y es un modo de primera clase: todos los modos, todos los niveles y el Modo Práctica funcionan igual. Lo único que cambia es que el progreso vive en memoria y se pierde al recargar, y que las partidas no entran al ranking.
+Se puede jugar **sin cuenta**, y es un modo de primera clase: todos los modos, todos los niveles y el Dojo funcionan igual. Lo único que cambia es que el progreso vive en memoria y se pierde al recargar, y que las partidas no entran al ranking.
 
 Iniciar sesión con Google se ofrece desde el menú. Si la aplicación arranca sin credenciales de Supabase, el acceso ni se muestra: no tendría a dónde ir, así que la app se comporta como si fuera de invitado permanente en lugar de ofrecer un botón que falla.
 
 Al cerrar sesión se borra el progreso acumulado en memoria, para que no quede atribuido a quien siga jugando en el mismo navegador.
 
-### Progreso del Modo Práctica
+### Progreso del Dojo
 
 Con sesión iniciada, los aciertos y fallos por verbo se guardan y se recuperan al volver. Se envían **agrupados cada pocos segundos**, y también al salir de la pantalla o al mandar la pestaña a segundo plano, así que no hace falta esperar a nada antes de cerrar.
 
