@@ -8,7 +8,7 @@ import {useRanking} from '@/composables/useRanking'
 import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
 import {MODE_LABELS} from '@/data/modes'
 import {formatDuration, formatPace} from '@/lib/format'
-import {FORM_LABELS} from '@/lib/practice'
+import MistakeItem from '@/components/MistakeItem.vue'
 
 /**
  * Desenlace de la partida.
@@ -152,9 +152,30 @@ const mistakes = computed(() => engine.mistakes.value)
 
 const isMistakesOpen = ref(false)
 
-/** «Ver mis 1 error» chirría; el singular necesita su propia frase. */
-const mistakesLabel = computed(() =>
-	mistakes.value.length === 1 ? 'Ver mi error' : `Ver mis ${mistakes.value.length} errores`,
+/**
+ * Cuántos errores se repasan sin abrir nada.
+ *
+ * El repaso es la razón de ser de esta pantalla —el instante posterior a fallar
+ * es cuando el error significa algo—, así que se ve en la propia pantalla y no
+ * tras un modal. El tope existe porque una partida con ocho fallos empujaría las
+ * acciones a otro scroll, que es justo el defecto que se está corrigiendo.
+ */
+const INLINE_MISTAKES = 3
+
+const visibleMistakes = computed(() => mistakes.value.slice(0, INLINE_MISTAKES))
+
+const hiddenMistakeCount = computed(() => Math.max(0, mistakes.value.length - INLINE_MISTAKES))
+
+/** «Los 1 restantes» chirría; el singular necesita su propia frase. */
+const moreMistakesLabel = computed(() =>
+	hiddenMistakeCount.value === 1
+		? 'Ver el error restante'
+		: `Ver los ${hiddenMistakeCount.value} errores restantes`,
+)
+
+/** Encabeza el repaso. En singular no se anuncia una lista que no existe. */
+const reviewTitle = computed(() =>
+	mistakes.value.length === 1 ? 'Lo que fallaste' : `Lo que fallaste · ${mistakes.value.length}`,
 )
 
 /**
@@ -253,24 +274,39 @@ onBeforeUnmount(() => {
 
 		<p v-if="recordNote !== null" class="result-record">{{ recordNote }}</p>
 
-		<p v-if="rankingNote" class="result-note">{{ rankingNote }}</p>
+		<!--
+			El repaso va **antes** de las acciones y a la vista. Estaba al final, tras
+			los tres botones y fuera de pantalla, así que lo único visible al terminar
+			una partida era volver a jugar.
+
+			La jerarquía la dan la posición y la presencia, no el color: «Jugar otra
+			vez» sigue siendo el único botón primario, porque el amarillo significa
+			«acción principal» en todo el sistema y dos seguidos no significarían nada.
+		-->
+		<section v-if="mistakes.length > 0" class="result-review brutal-card">
+			<h2 class="result-review-title">{{ reviewTitle }}</h2>
+
+			<MistakeItem v-for="(mistake, index) in visibleMistakes" :key="index" :mistake="mistake" />
+
+			<ChoiceButton v-if="hiddenMistakeCount > 0" variant="ghost" @click="isMistakesOpen = true">
+				{{ moreMistakesLabel }}
+			</ChoiceButton>
+		</section>
 
 		<!--
-			Estado de la persistencia. Se dice aquí, cuando hay un resultado concreto
-			en juego, y no antes de jugar (`CLAUDE.md` §8).
+			Las dos notas administrativas —si el resultado clasifica y si se guarda—
+			bajan aquí, junto a las acciones con las que se relacionan. Entre las
+			métricas y el repaso costaban 72px del presupuesto que decide si el
+			jugador ve o no lo que falló.
 		-->
+		<p v-if="rankingNote" class="result-note">{{ rankingNote }}</p>
+
 		<p v-if="saveNote !== null" class="result-guest">{{ saveNote }}</p>
 
 		<div class="result-actions">
 			<ChoiceButton variant="primary" @click="playAgain">Jugar otra vez</ChoiceButton>
 			<ChoiceButton variant="secondary" @click="goToRanking">Clasificación</ChoiceButton>
 			<ChoiceButton variant="ghost" @click="goHome">Volver al menú</ChoiceButton>
-		</div>
-
-		<div v-if="mistakes.length > 0" class="result-actions">
-			<ChoiceButton variant="secondary" @click="isMistakesOpen = true">
-				{{ mistakesLabel }}
-			</ChoiceButton>
 		</div>
 
 		<!--
@@ -285,27 +321,8 @@ onBeforeUnmount(() => {
 			@close="isMistakesOpen = false"
 		>
 			<ol class="mistakes">
-				<li v-for="(mistake, index) in mistakes" :key="index" class="mistake">
-					<p class="mistake-label">Elegiste</p>
-					<p class="mistake-chosen">
-						<span v-for="choice in mistake.chosen" :key="choice.form" class="mistake-choice">
-							{{ choice.text }}
-							<span class="mistake-form">{{ FORM_LABELS[choice.form] }}</span>
-						</span>
-					</p>
-
-					<!--
-						Se muestran las tríadas de TODOS los verbos que tocó, no una sola:
-						al fallar se eligen celdas de hasta tres verbos distintos, así que
-						no existe «la» correcta. Ver las tres revela dónde estaba la
-						confusión.
-					-->
-					<p class="mistake-label">
-						{{ mistake.triads.length === 1 ? 'Sus formas son' : 'Sus formas correctas son' }}
-					</p>
-					<p v-for="verb in mistake.triads" :key="verb.id" class="mistake-triad">
-						{{ verb.present }} · {{ verb.past }} · {{ verb.participle }}
-					</p>
+				<li v-for="(mistake, index) in mistakes" :key="index">
+					<MistakeItem :mistake="mistake" />
 				</li>
 			</ol>
 
@@ -342,7 +359,12 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	align-items: center;
 	justify-content: flex-start;
-	gap: var(--spacing-gutter);
+	/*
+	 * Intervalo corto en móvil. El presupuesto vertical de esta pantalla lo manda
+	 * el repaso de errores, que tiene que verse sin desplazarse; el aire entre
+	 * bloques es lo primero que cede para conseguirlo.
+	 */
+	gap: calc(var(--spacing-gutter) * 2 / 3);
 	padding: var(--spacing-screen-mobile);
 	overflow-y: auto;
 }
@@ -368,7 +390,7 @@ onBeforeUnmount(() => {
 }
 
 .result-header {
-	padding: var(--spacing-gutter);
+	padding: calc(var(--spacing-gutter) / 2);
 	text-align: center;
 	width: 100%;
 	max-width: 32rem;
@@ -405,14 +427,26 @@ onBeforeUnmount(() => {
 	margin: 0;
 }
 
+/*
+ * Las tres métricas caben en una fila en móvil.
+ *
+ * Con una base de 8rem sólo entraban dos por línea y el bloque medía 276px: dos
+ * filas y media de tarjetas para tres números de dos caracteres. Ese alto era el
+ * que empujaba el repaso de errores fuera de la pantalla.
+ */
 .result-metric {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	/*
+	 * Alineadas por arriba, no centradas: sólo una de las tarjetas lleva unidad
+	 * («verbos por minuto»), y centrar cada una por su cuenta dejaba sus rótulos y
+	 * sus cifras a alturas distintas dentro de la misma fila.
+	 */
+	justify-content: flex-start;
 	gap: 2px;
-	flex: 1 1 8rem;
-	padding: calc(var(--spacing-gutter) / 2);
+	flex: 1 1 5rem;
+	padding: calc(var(--spacing-gutter) / 3);
 	text-align: center;
 }
 
@@ -425,7 +459,7 @@ onBeforeUnmount(() => {
 
 .result-metric-value {
 	font-family: var(--font-display);
-	font-size: var(--text-headline-lg);
+	font-size: var(--text-headline-md);
 	font-weight: 800;
 	font-variant-numeric: tabular-nums;
 	margin: 0;
@@ -445,38 +479,6 @@ onBeforeUnmount(() => {
 	padding: 0;
 	list-style: none;
 	text-align: left;
-}
-
-.mistake-label {
-	font-family: var(--font-display);
-	font-size: var(--text-caption);
-	text-transform: uppercase;
-	letter-spacing: 0.06em;
-	opacity: 0.7;
-}
-
-.mistake-chosen {
-	display: flex;
-	flex-wrap: wrap;
-	gap: calc(var(--spacing-gutter) / 3);
-	margin: 4px 0 calc(var(--spacing-gutter) / 2);
-}
-
-.mistake-choice {
-	padding: 2px 6px;
-	border: 3px solid var(--color-ink);
-	/* Rosa: el mismo color con el que se marca el fallo en el tablero. */
-	background-color: var(--color-pink);
-	font-size: var(--text-caption);
-}
-
-.mistake-form {
-	opacity: 0.75;
-}
-
-.mistake-triad {
-	margin-top: 4px;
-	font-size: var(--text-body-md);
 }
 
 .result-record {
@@ -501,6 +503,26 @@ onBeforeUnmount(() => {
 	opacity: 0.7;
 }
 
+/*
+ * El repaso de errores. Es el bloque por el que existe esta pantalla, así que
+ * ocupa una superficie propia en lugar de ser una línea más de texto suelto.
+ */
+.result-review {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-gutter);
+	width: 100%;
+	max-width: 32rem;
+	padding: var(--spacing-gutter);
+	text-align: left;
+}
+
+.result-review-title {
+	font-size: var(--text-label-bold);
+	letter-spacing: 0.04em;
+	margin: 0;
+}
+
 .result-actions {
 	display: flex;
 	flex-wrap: wrap;
@@ -518,8 +540,25 @@ onBeforeUnmount(() => {
 		padding: var(--spacing-screen-desktop);
 	}
 
+	.result {
+		gap: var(--spacing-gutter);
+	}
+
+	.result-header {
+		padding: var(--spacing-gutter);
+	}
+
 	.result-title {
 		font-size: var(--text-display-lg);
+	}
+
+	.result-metric {
+		flex: 1 1 8rem;
+		padding: calc(var(--spacing-gutter) / 2);
+	}
+
+	.result-metric-value {
+		font-size: var(--text-headline-lg);
 	}
 }
 </style>
