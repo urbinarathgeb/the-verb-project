@@ -114,13 +114,19 @@ function createFakeClient(options: FakeClientOptions = {}) {
  * credenciales.
  *
  * Hay que reiniciar el registro de módulos y volver a importar todo —incluida
- * Pinia— porque `@/lib/supabase` expone una constante evaluada al importar el
- * módulo. Si se reutilizara la Pinia importada estáticamente, la instancia
- * activa no sería la misma que ve el store recién importado.
+ * Pinia— porque `@/lib/supabase` memoriza el cliente y expone además una
+ * constante evaluada al importar el módulo. Si se reutilizara la Pinia
+ * importada estáticamente, la instancia activa no sería la misma que ve el
+ * store recién importado.
  */
 async function loadStore(client: ReturnType<typeof createFakeClient>['client'] | null) {
 	vi.resetModules()
-	vi.doMock('@/lib/supabase', () => ({supabase: client, isSupabaseConfigured: client !== null}))
+	vi.doMock('@/lib/supabase', () => ({
+		// El SDK se carga bajo demanda, así que el módulo expone una función que
+		// resuelve al cliente en lugar de la instancia ya creada.
+		getSupabase: () => Promise.resolve(client),
+		isSupabaseConfigured: client !== null,
+	}))
 
 	const {createPinia, setActivePinia} = await import('pinia')
 	setActivePinia(createPinia())

@@ -158,7 +158,12 @@ async function loadStore(
 	userId: string | null,
 ) {
 	vi.resetModules()
-	vi.doMock('@/lib/supabase', () => ({supabase: client, isSupabaseConfigured: client !== null}))
+	vi.doMock('@/lib/supabase', () => ({
+		// El SDK se carga bajo demanda, así que el módulo expone una función que
+		// resuelve al cliente en lugar de la instancia ya creada.
+		getSupabase: () => Promise.resolve(client),
+		isSupabaseConfigured: client !== null,
+	}))
 
 	const {createPinia, setActivePinia} = await import('pinia')
 	setActivePinia(createPinia())

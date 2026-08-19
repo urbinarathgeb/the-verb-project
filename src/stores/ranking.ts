@@ -1,6 +1,6 @@
 import {computed, ref} from 'vue'
 import {defineStore} from 'pinia'
-import {supabase} from '@/lib/supabase'
+import {getSupabase} from '@/lib/supabase'
 import {
 	RANKING_PAGE_SIZE,
 	bestMetricAfter,
@@ -67,20 +67,21 @@ export const useRankingStore = defineStore('ranking', () => {
 	 * el resultado recién insertado y se compararía consigo mismo.
 	 */
 	async function loadPersonalBest(mode: GameMode, difficulty: Difficulty): Promise<number | null> {
-		if (supabase === null) return null
+		const client = await getSupabase()
+		if (client === null) return null
 
 		const userId = useAuthStore().userId
 		if (userId === null) return null
 
 		const response =
 			mode === 'target'
-				? await supabase
+				? await client
 						.from('target_ranking')
 						.select('time_ms')
 						.eq('level', difficulty)
 						.eq('user_id', userId)
 						.maybeSingle()
-				: await supabase
+				: await client
 						.from('precision_ranking')
 						.select('pace')
 						.eq('level', difficulty)
@@ -106,7 +107,8 @@ export const useRankingStore = defineStore('ranking', () => {
 		difficulty: Difficulty,
 		metric: number,
 	): Promise<number | null> {
-		if (supabase === null) return null
+		const client = await getSupabase()
+		if (client === null) return null
 
 		const userId = useAuthStore().userId
 		if (userId === null) return null
@@ -122,13 +124,13 @@ export const useRankingStore = defineStore('ranking', () => {
 		 */
 		const response =
 			mode === 'target'
-				? await supabase
+				? await client
 						.from('target_ranking')
 						.select('*', {count: 'exact', head: true})
 						.eq('level', difficulty)
 						.neq('user_id', userId)
 						.lt('time_ms', metric)
-				: await supabase
+				: await client
 						.from('precision_ranking')
 						.select('*', {count: 'exact', head: true})
 						.eq('level', difficulty)
@@ -165,14 +167,15 @@ export const useRankingStore = defineStore('ranking', () => {
 	}
 
 	async function runSave(result: SessionResult, userId: string | null): Promise<SaveOutcome> {
-		if (supabase === null) return 'offline'
+		const client = await getSupabase()
+		if (client === null) return 'offline'
 		if (userId === null) return 'guest'
 		// Una derrota en Objetivo no tiene tiempo que comparar: no se guarda.
 		if (!isPersistable(result)) return 'not-persisted'
 
 		isSaving.value = true
 
-		const {error} = await supabase.from('game_sessions').insert({
+		const {error} = await client.from('game_sessions').insert({
 			user_id: userId,
 			mode: result.mode,
 			// La columna se llama `level` y guarda la dificultad elegida.
@@ -226,7 +229,9 @@ export const useRankingStore = defineStore('ranking', () => {
 	 * para que el cliente tipado siga sabiendo qué columnas existen en cada una.
 	 */
 	async function loadRanking(mode: GameMode, difficulty: Difficulty): Promise<void> {
-		if (supabase === null) {
+		const client = await getSupabase()
+
+		if (client === null) {
 			loadStatus.value = 'error'
 			loadError.value = 'No hay conexión con el servidor: la clasificación no está disponible.'
 			return
@@ -239,13 +244,13 @@ export const useRankingStore = defineStore('ranking', () => {
 
 		const response =
 			mode === 'target'
-				? await supabase
+				? await client
 						.from('target_ranking')
 						.select('*')
 						.eq('level', difficulty)
 						.order('time_ms', {ascending: true})
 						.limit(RANKING_PAGE_SIZE)
-				: await supabase
+				: await client
 						.from('precision_ranking')
 						.select('*')
 						.eq('level', difficulty)

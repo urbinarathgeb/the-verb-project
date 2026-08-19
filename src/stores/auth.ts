@@ -2,7 +2,7 @@ import {computed, ref} from 'vue'
 import {defineStore} from 'pinia'
 import type {Session} from '@supabase/supabase-js'
 import {describeAuthError, identityFromUser} from '@/lib/auth'
-import {isSupabaseConfigured, supabase} from '@/lib/supabase'
+import {getSupabase, isSupabaseConfigured} from '@/lib/supabase'
 import {useProgressStore} from '@/stores/progress'
 
 /**
@@ -67,13 +67,15 @@ export const useAuthStore = defineStore('auth', () => {
 	}
 
 	async function restoreSession(): Promise<void> {
-		if (supabase === null) {
+		status.value = 'loading'
+
+		const client = await getSupabase()
+
+		if (client === null) {
 			// Sin backend no hay nada que restaurar: invitado permanente y listo.
 			status.value = 'ready'
 			return
 		}
-
-		status.value = 'loading'
 
 		/*
 		 * El listener se registra ANTES de la primera lectura, y es deliberado:
@@ -82,14 +84,14 @@ export const useAuthStore = defineStore('auth', () => {
 		 * sesión exista. El listener recoge ese `SIGNED_IN` posterior; sin él, el
 		 * login parecería no hacer nada al volver de Google.
 		 */
-		const {data: listener} = supabase.auth.onAuthStateChange((_event, nextSession) => {
+		const {data: listener} = client.auth.onAuthStateChange((_event, nextSession) => {
 			session.value = nextSession
 			status.value = 'ready'
 		})
 
 		unsubscribe = () => listener.subscription.unsubscribe()
 
-		const {data, error} = await supabase.auth.getSession()
+		const {data, error} = await client.auth.getSession()
 
 		if (error !== null) errorMessage.value = describeAuthError(error)
 
@@ -120,7 +122,9 @@ export const useAuthStore = defineStore('auth', () => {
 	 * así que sólo se vuelve de aquí cuando algo ha fallado.
 	 */
 	async function signInWithGoogle(): Promise<void> {
-		if (supabase === null) {
+		const client = await getSupabase()
+
+		if (client === null) {
 			errorMessage.value = 'No hay conexión con el servidor: sólo se puede jugar como invitado.'
 			return
 		}
@@ -128,7 +132,7 @@ export const useAuthStore = defineStore('auth', () => {
 		clearError()
 		isWorking.value = true
 
-		const {error} = await supabase.auth.signInWithOAuth({
+		const {error} = await client.auth.signInWithOAuth({
 			provider: 'google',
 			// La ruta existe en el router; Supabase la exige en su lista blanca de
 			// «Redirect URLs» o la ignora y usa la Site URL en su lugar.
@@ -141,12 +145,13 @@ export const useAuthStore = defineStore('auth', () => {
 	}
 
 	async function signOut(): Promise<void> {
-		if (supabase === null) return
+		const client = await getSupabase()
+		if (client === null) return
 
 		clearError()
 		isWorking.value = true
 
-		const {error} = await supabase.auth.signOut()
+		const {error} = await client.auth.signOut()
 
 		isWorking.value = false
 

@@ -21,10 +21,25 @@ interface FakeOptions {
 function createFakeClient(options: FakeOptions = {}) {
 	const rpcCalls: {name: string; params: unknown}[] = []
 	let releaseRpc: (() => void) | null = null
+	let announceRpc: (() => void) | null = null
+
+	/**
+	 * Se resuelve cuando la petición ha salido de verdad.
+	 *
+	 * Los casos de «se responde mientras está en vuelo» tienen que esperarla en
+	 * lugar de dar por hecho que `syncPending()` vacía la cola en el mismo tick:
+	 * el cliente se resuelve de forma asíncrona porque el SDK se carga bajo
+	 * demanda. Esperar al hecho, y no a un número de microtareas, deja el test a
+	 * salvo de cómo esté escrito el store por dentro.
+	 */
+	const rpcCalled = new Promise<void>((resolve) => {
+		announceRpc = resolve
+	})
 
 	const client = {
 		rpc: (name: string, params: unknown) => {
 			rpcCalls.push({name, params})
+			announceRpc?.()
 
 			if (options.holdRpc !== true) {
 				return Promise.resolve({error: options.rpcError ?? null})
@@ -42,6 +57,7 @@ function createFakeClient(options: FakeOptions = {}) {
 	return {
 		client,
 		rpcCalls,
+		rpcCalled,
 		releaseRpc: () => releaseRpc?.(),
 	}
 }
@@ -51,7 +67,12 @@ async function loadStore(
 	userId: string | null,
 ) {
 	vi.resetModules()
-	vi.doMock('@/lib/supabase', () => ({supabase: client, isSupabaseConfigured: client !== null}))
+	vi.doMock('@/lib/supabase', () => ({
+		// El SDK se carga bajo demanda, así que el módulo expone una función que
+		// resuelve al cliente en lugar de la instancia ya creada.
+		getSupabase: () => Promise.resolve(client),
+		isSupabaseConfigured: client !== null,
+	}))
 
 	const {createPinia, setActivePinia} = await import('pinia')
 	setActivePinia(createPinia())
@@ -179,6 +200,8 @@ describe('enviar los incrementos', () => {
 		store.recordAnswer(7, true)
 
 		const inFlight = store.syncPending()
+		await fake.rpcCalled
+
 		// Llega una respuesta más mientras la petición sigue abierta.
 		store.recordAnswer(7, true)
 		store.recordAnswer(8, false)
@@ -196,6 +219,8 @@ describe('enviar los incrementos', () => {
 		store.recordAnswer(7, true)
 
 		const inFlight = store.syncPending()
+		await fake.rpcCalled
+
 		store.recordAnswer(8, true)
 
 		fake.releaseRpc()
