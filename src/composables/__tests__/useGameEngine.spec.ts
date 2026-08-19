@@ -175,7 +175,7 @@ describe('useGameEngine — celdas pulsables', () => {
 
 	it('el tablero es inerte antes de arrancar', () => {
 		const engine = useGameEngine()
-		const cell: Cell = {id: '1:present', verbId: 1, form: 'present', text: 'be'}
+		const cell: Cell = {id: '1:present', verbId: 1, form: 'present', text: 'be', meaning: 'ser'}
 
 		expect(engine.isCellSelectable(cell)).toBe(false)
 	})

@@ -44,6 +44,15 @@ export interface PracticeQuestion {
 	readonly promptForm: VerbForm
 	/** Texto de la forma mostrada. */
 	readonly prompt: string
+	/**
+	 * Significado en español del verbo preguntado.
+	 *
+	 * Va aquí ya resuelto, como `prompt`, y no se deriva del catálogo en la
+	 * pantalla. Acompaña al verbo sea cual sea la forma del enunciado: el
+	 * significado es del verbo, no de la conjugación, así que vale igual cuando lo
+	 * que se muestra es un participio.
+	 */
+	readonly meaning: string
 	/** Forma por la que se pregunta. Siempre distinta de `promptForm`. */
 	readonly requestedForm: VerbForm
 	readonly correctAnswer: string
@@ -102,6 +111,7 @@ export function createQuestion(
 		verbId: subject.id,
 		promptForm,
 		prompt: subject[promptForm],
+		meaning: subject.meaning,
 		requestedForm,
 		correctAnswer,
 		options: shuffle([correctAnswer, ...distractors.map((verb) => verb[requestedForm])], rng),

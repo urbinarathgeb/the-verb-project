@@ -3,9 +3,30 @@ import {describeMistake, describeMistakes} from '../mistakes'
 import {createCell} from '../board'
 import type {Verb} from '@/types/verb'
 
-const GO: Verb = {id: 1, present: 'go', past: 'went', participle: 'gone', level: 'beginner'}
-const EAT: Verb = {id: 2, present: 'eat', past: 'ate', participle: 'eaten', level: 'beginner'}
-const BE: Verb = {id: 3, present: 'be', past: 'was', participle: 'been', level: 'beginner'}
+const GO: Verb = {
+	id: 1,
+	present: 'go',
+	past: 'went',
+	participle: 'gone',
+	meaning: 'ir',
+	level: 'beginner',
+}
+const EAT: Verb = {
+	id: 2,
+	present: 'eat',
+	past: 'ate',
+	participle: 'eaten',
+	meaning: 'comer',
+	level: 'beginner',
+}
+const BE: Verb = {
+	id: 3,
+	present: 'be',
+	past: 'was',
+	participle: 'been',
+	meaning: 'ser',
+	level: 'beginner',
+}
 
 const CATALOG = [GO, EAT, BE]
 

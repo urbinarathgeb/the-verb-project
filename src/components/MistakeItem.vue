@@ -33,6 +33,13 @@ defineProps<{mistake: Mistake}>()
 		</p>
 		<p v-for="verb in mistake.triads" :key="verb.id" class="mistake-triad">
 			{{ verb.present }} · {{ verb.past }} · {{ verb.participle }}
+			<!--
+				En línea propia y no como un cuarto elemento tras otro `·`: la tríada se
+				lee como «tres formas», y meter el significado en esa serie rompería esa
+				gramática visual. Aquí sí acompaña a las tres formas sin problema, porque
+				la partida ya terminó y no hay mecánica que proteger.
+			-->
+			<span class="mistake-meaning">{{ verb.meaning }}</span>
 		</p>
 	</div>
 </template>
@@ -72,5 +79,11 @@ defineProps<{mistake: Mistake}>()
 .mistake-triad {
 	margin-top: 4px;
 	font-size: var(--text-body-md);
+}
+
+.mistake-meaning {
+	display: block;
+	font-size: var(--text-caption);
+	opacity: 0.7;
 }
 </style>

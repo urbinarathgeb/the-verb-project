@@ -21,6 +21,7 @@ interface RawVerb {
 	present: string
 	past: string
 	participle: string
+	meaning: string
 	level: string
 }
 
@@ -41,11 +42,22 @@ function parseVerb(raw: RawVerb): Verb {
 		}
 	}
 
+	/*
+	 * Se comprueba el tipo y no sólo el vacío: `rawVerbs as RawVerb[]` es una
+	 * aserción, así que una entrada del JSON a la que le falte el campo compila
+	 * igual. Sin esta guarda, el fallo saldría más tarde y como un `TypeError`
+	 * opaco en vez del mensaje que dice qué verbo está mal.
+	 */
+	if (typeof raw.meaning !== 'string' || raw.meaning.trim() === '') {
+		throw new Error(`Verbo ${raw.id}: el significado está vacío.`)
+	}
+
 	return {
 		id: raw.id,
 		present: raw.present,
 		past: raw.past,
 		participle: raw.participle,
+		meaning: raw.meaning,
 		level: raw.level,
 	}
 }

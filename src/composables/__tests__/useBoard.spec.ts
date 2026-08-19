@@ -9,6 +9,7 @@ function makeVerbs(count: number): Verb[] {
 		id: index + 1,
 		level: 'beginner',
 		present: `present-${index + 1}`,
+		meaning: `significado-${index + 1}`,
 		past: `past-${index + 1}`,
 		participle: `participle-${index + 1}`,
 	}))

@@ -24,6 +24,52 @@ describe('integridad del catálogo de verbs', () => {
 		expect(invalid).toEqual([])
 	})
 
+	it('tiene significado en todos los verbs', () => {
+		const sinSignificado = VERBS.filter((verb) => verb.meaning.trim() === '')
+		expect(sinSignificado).toEqual([])
+	})
+
+	/**
+	 * El tope no es una manía de estilo, es estructural: el significado se pinta
+	 * en la celda de presente, y **todas las celdas de una fila comparten altura**
+	 * entre las tres columnas. Una sola glosa que envuelva a dos líneas engorda la
+	 * fila entera, y con ella el tablero, que es lo más ajustado de la app —en
+	 * `hard` sobre un iPhone SE ya iba al límite antes de existir este campo.
+	 */
+	it('mantiene los significados dentro del ancho de una celda', () => {
+		const largos = VERBS.filter((verb) => verb.meaning.length > 12).map((verb) => verb.meaning)
+		expect(largos).toEqual([])
+	})
+
+	/**
+	 * Dos celdas de presente con la misma glosa se leen como un error de la app.
+	 * Cuando dos verbos comparten sentido hay que matizar uno (`hacer` para `do`,
+	 * `fabricar` para `make`), que además es la distinción que cuesta aprender.
+	 */
+	it('no repite el mismo significado en dos verbs', () => {
+		const vistos = new Map<string, number>()
+		const repetidos: string[] = []
+
+		for (const verb of VERBS) {
+			const previo = vistos.get(verb.meaning)
+			if (previo !== undefined)
+				repetidos.push(`"${verb.meaning}" en los verbs ${previo} y ${verb.id}`)
+			else vistos.set(verb.meaning, verb.id)
+		}
+
+		expect(repetidos).toEqual([])
+	})
+
+	/**
+	 * La celda del tablero aplica `text-transform: lowercase`, así que una
+	 * mayúscula aquí se perdería ahí y sobreviviría en el repaso de errores y en
+	 * la lista de progreso. El catálogo evita esa incoherencia en origen.
+	 */
+	it('escribe los significados en minúscula', () => {
+		const conMayusculas = VERBS.filter((verb) => verb.meaning !== verb.meaning.toLowerCase())
+		expect(conMayusculas).toEqual([])
+	})
+
 	/**
 	 * Ésta es la invariante crítica del tablero: si dos verbs comparten la misma
 	 * cadena dentro de una misma columna, se renderizan dos celdas visualmente

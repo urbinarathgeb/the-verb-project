@@ -31,4 +31,21 @@ export type VerbLevel = (typeof VERB_LEVELS)[number]
 export interface Verb extends Record<VerbForm, string> {
 	readonly id: number
 	readonly level: VerbLevel
+	/**
+	 * Significado en español, en infinitivo y minúscula (`beber`, `romper`).
+	 *
+	 * La propiedad va en inglés y su contenido en español, que es la regla de
+	 * `CLAUDE.md` §5 para el texto visible: es lo mismo que `label: 'Fácil'` en
+	 * `data/levels.ts`.
+	 *
+	 * **No es una forma verbal y por eso no entra en `VERB_FORMS`.** Si entrara,
+	 * el tablero pintaría una cuarta columna y el Dojo preguntaría por ella. Es
+	 * dato didáctico, no parte de la conjugación.
+	 *
+	 * Es una **glosa**, no una traducción exhaustiva: un verbo inglés no tiene
+	 * un único equivalente, así que se guarda la acepción más común y corta. Los
+	 * matices caben dentro de la propia cadena (`ser / estar`), igual que ya
+	 * ocurre con `"was / were"` en `past`.
+	 */
+	readonly meaning: string
 }

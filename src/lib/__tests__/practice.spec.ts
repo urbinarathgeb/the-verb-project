@@ -17,6 +17,7 @@ function makeVerb(id: number): Verb {
 		id,
 		level: 'beginner',
 		present: `present-${id}`,
+		meaning: `significado-${id}`,
 		past: `past-${id}`,
 		participle: `participle-${id}`,
 	}
@@ -205,9 +206,24 @@ describe('createQuestion — casos límite', () => {
 			present: `present-${id}`,
 			past: 'igual',
 			participle: 'igual',
+			meaning: `significado-${id}`,
 		}))
 
 		expect(createQuestion(clones, createSeededRng(1))).toBeNull()
+	})
+})
+
+describe('createQuestion — significado', () => {
+	/**
+	 * El significado es del verbo, no de la forma mostrada: sirve igual cuando el
+	 * enunciado enseña un participio y pregunta por el pasado.
+	 */
+	it('lleva el significado del verbo preguntado', () => {
+		const verbs = makeVerbs(20)
+		const q = createQuestion(verbs, createSeededRng(3))
+		const subject = verbs.find((verb) => verb.id === q?.verbId)
+
+		expect(q?.meaning).toBe(subject?.meaning)
 	})
 })
 

@@ -9,10 +9,17 @@ import type {Verb} from '@/types/verb'
  */
 
 const CATALOG: readonly Verb[] = [
-	{id: 1, present: 'be', past: 'was / were', participle: 'been', level: 'beginner'},
-	{id: 2, present: 'go', past: 'went', participle: 'gone', level: 'beginner'},
-	{id: 3, present: 'speak', past: 'spoke', participle: 'spoken', level: 'intermediate'},
-	{id: 4, present: 'weave', past: 'wove', participle: 'woven', level: 'advanced'},
+	{id: 1, present: 'be', past: 'was / were', participle: 'been', meaning: 'ser', level: 'beginner'},
+	{id: 2, present: 'go', past: 'went', participle: 'gone', meaning: 'ir', level: 'beginner'},
+	{
+		id: 3,
+		present: 'speak',
+		past: 'spoke',
+		participle: 'spoken',
+		meaning: 'hablar',
+		level: 'intermediate',
+	},
+	{id: 4, present: 'weave', past: 'wove', participle: 'woven', meaning: 'tejer', level: 'advanced'},
 ]
 
 function progress(verbId: number, correct: number, wrong: number): VerbProgress {

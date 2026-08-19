@@ -11,7 +11,7 @@ import {
 	refillSlots,
 } from '../board'
 import {createSeededRng} from '../shuffle'
-import {VERB_FORMS, type Verb} from '@/types/verb'
+import {VERB_FORMS, type Verb, type VerbForm} from '@/types/verb'
 import {VERBS, getVerbsForDifficulty} from '@/data/verbs'
 import {getLevelConfig} from '@/data/levels'
 import {DIFFICULTIES, type Cell, type Selection} from '@/types/game'
@@ -26,6 +26,7 @@ function makeVerb(id: number): Verb {
 		id,
 		level: 'beginner',
 		present: `present-${id}`,
+		meaning: `significado-${id}`,
 		past: `past-${id}`,
 		participle: `participle-${id}`,
 	}
@@ -57,6 +58,19 @@ describe('createCell', () => {
 
 	it.each(VERB_FORMS)('toma el texto de la forma "%s"', (form) => {
 		expect(createCell(verb, form).text).toBe(verb[form])
+	})
+
+	/**
+	 * El invariante que protege la mecánica: si el significado apareciera en las
+	 * tres columnas, emparejar se reduciría a buscar la misma palabra tres veces
+	 * y el juego dejaría de exigir saber las formas (`MECHANICS.md` §1).
+	 */
+	it('pone el significado en la celda de presente', () => {
+		expect(createCell(verb, 'present').meaning).toBe(verb.meaning)
+	})
+
+	it.each(['past', 'participle'] as const)('deja sin significado la celda de "%s"', (form) => {
+		expect(createCell(verb, form).meaning).toBeNull()
 	})
 
 	it('conserva la identidad del verbo y la forma', () => {
@@ -363,6 +377,17 @@ describe('refillSlots', () => {
 	const incoming = pool[0] as Verb
 	/** El verbo de la primera fila de presente, como si acabara de acertarse. */
 	const resolvedId = (columns.present[0] as Cell).verbId
+
+	/** El camino que se olvida: las celdas repuestas también llevan significado. */
+	it('da significado a la celda de presente que entra, y sólo a ésa', () => {
+		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(1))
+		const entrante = (form: VerbForm) =>
+			next[form].find((cell) => cell.verbId === incoming.id) as Cell
+
+		expect(entrante('present').meaning).toBe(incoming.meaning)
+		expect(entrante('past').meaning).toBeNull()
+		expect(entrante('participle').meaning).toBeNull()
+	})
 
 	it('coloca la tríada entrante, una celda por columna', () => {
 		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(1))

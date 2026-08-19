@@ -42,6 +42,8 @@ export function createCell(verb: Verb, form: VerbForm): Cell {
 		verbId: verb.id,
 		form,
 		text: verb[form],
+		// Sólo el presente lleva significado; ver el porqué en `Cell.meaning`.
+		meaning: form === 'present' ? verb.meaning : null,
 	}
 }
 

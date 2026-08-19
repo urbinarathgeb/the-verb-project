@@ -97,6 +97,7 @@ onMounted(() => {
 								<span class="progress-forms">
 									{{ row.verb.present }} · {{ row.verb.past }} · {{ row.verb.participle }}
 								</span>
+								<span class="progress-meaning">{{ row.verb.meaning }}</span>
 							</th>
 							<td class="progress-numeric">
 								{{ percent(row.accuracy) }}
@@ -263,6 +264,15 @@ onMounted(() => {
 
 .progress-forms {
 	overflow-wrap: anywhere;
+}
+
+/* Dentro de la misma celda de encabezado de fila: así el lector de pantalla lo
+   asocia a la fila entera y la tabla no gana una cuarta columna, que en móvil la
+   estrecharía. */
+.progress-meaning {
+	display: block;
+	font-size: var(--text-micro);
+	opacity: 0.7;
 }
 
 .progress-counts {

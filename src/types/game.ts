@@ -69,6 +69,20 @@ export interface Cell {
 	readonly verbId: number
 	readonly form: VerbForm
 	readonly text: string
+	/**
+	 * Significado en español, **sólo en las celdas de presente**; `null` en las
+	 * demás.
+	 *
+	 * No es un detalle de presentación: es la regla que protege la mecánica. Si
+	 * las tres columnas mostraran el significado, emparejar se reduciría a buscar
+	 * «beber» tres veces y el juego dejaría de exigir saber las formas
+	 * (`MECHANICS.md` §1). Al vivir en el dato y no en la plantilla, el invariante
+	 * se puede comprobar en lógica pura.
+	 *
+	 * Es `null` explícito y no una propiedad opcional para obligar a que quien lo
+	 * pinta se plantee el caso, en vez de que un olvido pase desapercibido.
+	 */
+	readonly meaning: string | null
 }
 
 /**

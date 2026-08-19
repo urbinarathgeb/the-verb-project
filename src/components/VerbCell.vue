@@ -95,7 +95,14 @@ function handleClick(): void {
 		:aria-pressed="status === 'selected'"
 		@click="handleClick"
 	>
-		{{ cell.text }}
+		<span class="verb-cell-form">{{ cell.text }}</span>
+		<!--
+			El significado sólo llega en las celdas de presente; el porqué está en
+			`Cell.meaning`. Va dentro del botón a propósito: así el nombre accesible
+			pasa a ser «go ir», que describe el control entero, en vez de exigir un
+			`aria-label` que habría que mantener en paralelo.
+		-->
+		<span v-if="cell.meaning !== null" class="verb-cell-meaning">{{ cell.meaning }}</span>
 	</button>
 </template>
 
@@ -146,6 +153,13 @@ function handleClick(): void {
 	 */
 	min-height: var(--spacing-touch);
 	width: 100%;
+	/* Dos líneas cuando hay significado, así que el centrado se declara aquí en
+	   vez de dejarlo al que trae el botón por defecto. */
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 2px;
 	padding: calc(var(--spacing-gutter) / 3);
 	font-family: var(--font-display);
 	font-size: var(--text-label-bold);
@@ -157,6 +171,46 @@ function handleClick(): void {
 	overflow-wrap: anywhere;
 }
 
+/*
+ * Aquí se juega el encaje del tablero entero, así que conviene la aritmética.
+ *
+ * La celda es `border-box` con 3px de borde arriba y abajo y 8px de relleno. El
+ * verbo, sin esta regla, hereda el `line-height: 1.5` del `body` —el `1` que
+ * declara `--text-label-bold--line-height` sólo se aplica a través de la utilidad
+ * de Tailwind, no al leer la variable en CSS plano— y ocupa 21px en vez de 14:
+ *
+ *     21 + 16 + 6 = 43px  →  el mínimo táctil de 44px ya iba al límite
+ *
+ * Fijando el interlineado a 1, la línea baja a 14px y libera los 7px que paga la
+ * segunda. Con `--text-micro` a interlineado 1 y 2px de hueco:
+ *
+ *     14 + 2 + 10 + 16 + 6 = 48px
+ *
+ * Cuatro por encima del suelo. Los recupera el relleno compacto de la celda con
+ * significado, que sólo se aplica a la columna de presente. **Si alguien sube el
+ * significado a 12px o devuelve los 8px de relleno, el texto se saldrá del borde
+ * en `hard` sobre un móvil bajo**: ahí la celda no crece, porque `min-height`
+ * sustituye al mínimo automático por contenido.
+ */
+.verb-cell-form {
+	line-height: 1;
+}
+
+.verb-cell-meaning {
+	/* Mono y regular frente al display 700 del verbo: se lee como anotación, no
+	   como una segunda respuesta. */
+	font-family: var(--font-body);
+	font-size: var(--text-micro);
+	line-height: 1;
+	font-weight: 400;
+	text-transform: none;
+	opacity: 0.7;
+}
+
+.verb-cell:has(.verb-cell-meaning) {
+	padding: calc(var(--spacing-gutter) / 4);
+}
+
 .verb-cell:disabled {
 	cursor: default;
 }
@@ -165,6 +219,15 @@ function handleClick(): void {
 	.verb-cell {
 		font-size: var(--text-headline-md);
 		padding: calc(var(--spacing-gutter) / 2);
+		gap: 4px;
+	}
+
+	.verb-cell:has(.verb-cell-meaning) {
+		padding: calc(var(--spacing-gutter) / 2);
+	}
+
+	.verb-cell-meaning {
+		font-size: var(--text-caption);
 	}
 }
 </style>

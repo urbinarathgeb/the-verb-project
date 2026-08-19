@@ -399,7 +399,7 @@ describe('useGameStore — jugadas', () => {
 	/** El tablero es inerte fuera de la partida: ni antes de arrancar ni después de terminar. */
 	it('ignora jugadas antes de arrancar', () => {
 		const store = useGameStore()
-		const cell: Cell = {id: '1:present', verbId: 1, form: 'present', text: 'be'}
+		const cell: Cell = {id: '1:present', verbId: 1, form: 'present', text: 'be', meaning: 'ser'}
 
 		expect(store.selectCell(cell)).toEqual({type: 'ignored'})
 		expect(store.matchedCount).toBe(0)

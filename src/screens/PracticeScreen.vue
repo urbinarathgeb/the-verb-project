@@ -159,6 +159,12 @@ onBeforeUnmount(() => {
 			<div class="practice-question brutal-card paper-tilt-2">
 				<p class="practice-form">{{ FORM_LABELS[question.promptForm] }}</p>
 				<p class="practice-word">{{ question.prompt }}</p>
+				<!--
+					El significado del verbo, no de la forma mostrada. Está aquí porque se
+					puede acertar por parecido fonético sin entender nada, y el Dojo es el
+					modo de aprender: sin ranking y sin reloj, no hay nada que proteger.
+				-->
+				<p class="practice-meaning">{{ question.meaning }}</p>
 				<p class="practice-asked">¿Cuál es el {{ FORM_LABELS[question.requestedForm] }}?</p>
 			</div>
 
@@ -291,6 +297,11 @@ onBeforeUnmount(() => {
 	overflow-wrap: anywhere;
 }
 
+.practice-meaning {
+	font-size: var(--text-caption);
+	opacity: 0.7;
+}
+
 .practice-asked {
 	font-size: var(--text-body-md);
 	margin-top: 8px;
@@ -411,6 +422,17 @@ onBeforeUnmount(() => {
 
 	.practice-word {
 		font-size: var(--text-headline-md);
+	}
+
+	/* La línea del significado vuelve a poner la pantalla justo por encima del
+	   viewport en un SE; se paga con su propio tamaño y con el aire de la
+	   pregunta, no quitándola: es la razón de que exista este trabajo. */
+	.practice-meaning {
+		font-size: var(--text-micro);
+	}
+
+	.practice-asked {
+		margin-top: 4px;
 	}
 
 	.practice-options {
