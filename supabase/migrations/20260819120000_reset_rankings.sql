@@ -1,0 +1,28 @@
+-- =============================================================================
+-- Reinicio de la clasificación
+--
+-- Se vacían las partidas registradas. Es un borrado **deliberado**, no una
+-- limpieza: cambian a la vez dos cosas que afectan a lo que mide un tiempo.
+--
+--   1. El tablero muestra ahora el significado en español en la columna de
+--      presente, así que una partida jugada después cuenta con una ayuda que las
+--      anteriores no tenían.
+--   2. El nivel `hard` deja de servir el catálogo completo con 10 celdas por
+--      columna y pasa a 8 celdas sobre el repertorio intermedio y avanzado.
+--
+-- Es el mismo criterio de `PLAN.md` (Bitácora, **D10**), cuando la reposición
+-- diferida cambió la dificultad: mezclar en una misma tabla partidas jugadas con
+-- reglas distintas es peor que empezar de cero, porque el ranking dejaría de
+-- medir lo que dice medir.
+--
+-- **No se toca `user_progress`.** Eso es lo que cada persona ha aprendido, y
+-- ninguno de los dos cambios lo invalida: `drink → drank → drunk` sigue siendo
+-- lo mismo. Sólo se descarta la comparación entre jugadores.
+--
+-- `delete` y no `truncate`: la tabla es pequeña, `delete` va dentro de la
+-- transacción de la migración y no toma el bloqueo exclusivo que `truncate`
+-- necesita. Las dos vistas de ranking son vistas normales, no materializadas, así
+-- que reflejan la tabla vacía sin refrescar nada.
+-- =============================================================================
+
+delete from public.game_sessions;
