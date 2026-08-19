@@ -26,7 +26,13 @@ export default defineConfigWithVueTs(
 		],
 	},
 
-	pluginVue.configs['flat/essential'],
+	/*
+	 * `flat/recommended` y no `flat/essential`: añade orden de atributos, nombres
+	 * de componente en PascalCase y consistencia en las directivas. Se adoptó tras
+	 * comprobar que el código existente pasa **sin un solo aviso**, así que no
+	 * cuesta nada y evita que esas convenciones se vayan de las manos.
+	 */
+	pluginVue.configs['flat/recommended'],
 	vueTsConfigs.recommended,
 
 	{
