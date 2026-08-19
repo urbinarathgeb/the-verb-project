@@ -178,7 +178,7 @@ onBeforeUnmount(() => {
 
 			<div class="practice-feedback">
 				<p v-if="engine.isAnswered.value" class="practice-verdict">
-					{{ engine.isLastAnswerCorrect.value ? '¡Correcto!' : 'La respuesta era otra.' }}
+					{{ engine.isLastAnswerCorrect.value ? '¡Correcto!' : 'No era esa.' }}
 				</p>
 				<ChoiceButton
 					v-if="engine.isAnswered.value"
@@ -213,7 +213,13 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	flex-direction: column;
 	align-items: center;
-	gap: var(--spacing-gutter);
+	/*
+	 * Intervalo corto en móvil. La pantalla cabe justa: con el del sistema
+	 * sobrepasaba el viewport en 43px y el botón de volver quedaba cortado por el
+	 * borde inferior, con la pinta de que la pantalla estaba mal montada más que
+	 * de que hubiera algo que leer más abajo.
+	 */
+	gap: calc(var(--spacing-gutter) * 2 / 3);
 	padding: var(--spacing-screen-mobile);
 	overflow-y: auto;
 }
@@ -254,7 +260,7 @@ onBeforeUnmount(() => {
 .practice-body {
 	display: flex;
 	flex-direction: column;
-	gap: var(--spacing-gutter);
+	gap: calc(var(--spacing-gutter) * 2 / 3);
 	width: 100%;
 	max-width: 32rem;
 	flex: 1 1 auto;
@@ -262,7 +268,7 @@ onBeforeUnmount(() => {
 }
 
 .practice-question {
-	padding: var(--spacing-gutter);
+	padding: calc(var(--spacing-gutter) / 2);
 	text-align: center;
 }
 
@@ -323,19 +329,38 @@ onBeforeUnmount(() => {
 	opacity: 1;
 }
 
+/*
+ * Veredicto y «Siguiente» comparten fila.
+ *
+ * Apilados medían 101px y devolvían el scroll a una pantalla que acababa de
+ * dejar de tenerlo: al responder, el botón de volver se cortaba otra vez. En
+ * fila caben en la altura de un botón, y la reserva de hueco —que existe para
+ * que las opciones no salten al aparecer el feedback— baja en consecuencia.
+ */
 .practice-feedback {
 	display: flex;
-	flex-direction: column;
 	align-items: center;
+	justify-content: center;
 	gap: calc(var(--spacing-gutter) / 2);
-	/* Reserva el hueco para que las opciones no salten al aparecer el feedback. */
-	min-height: calc(var(--spacing-touch) + var(--spacing-gutter));
+	/*
+	 * La reserva es el alto real del botón: su mínimo táctil más sus dos bordes.
+	 * Con sólo el mínimo se quedaba 8px corta y las opciones daban un salto al
+	 * responder, que es justo lo que esta reserva existe para evitar.
+	 */
+	min-height: calc(var(--spacing-touch) + 8px);
 }
 
 .practice-verdict {
 	font-family: var(--font-display);
-	font-size: var(--text-headline-md);
+	/* Una línea: en la fila del feedback, a 320px «La respuesta era otra.» partía
+	   en tres y descuadraba el botón que la acompaña. */
+	white-space: nowrap;
+	/* Un escalón por debajo: en fila compite con el botón, y el que manda es el
+	   botón, que es lo que hay que pulsar para seguir. */
+	font-size: var(--text-label-bold);
 	text-transform: uppercase;
+	text-align: center;
+	margin: 0;
 }
 
 .practice-next {
@@ -363,9 +388,68 @@ onBeforeUnmount(() => {
 	opacity: 0.7;
 }
 
+/*
+ * Pantallas bajas (un iPhone SE de 1ª generación mide 568px de alto).
+ *
+ * El Dojo tiene un suelo irreducible: tres opciones con el mínimo táctil de 44px
+ * cada una (`CLAUDE.md` §11) no se tocan. Lo que cede es todo lo demás —el aire
+ * entre bloques, el relleno de la tarjeta y el tamaño del verbo—, para que el
+ * botón de volver quepa en pantalla en vez de asomar por el borde.
+ */
+@media (height < 40rem) {
+	.practice {
+		gap: calc(var(--spacing-gutter) / 3);
+	}
+
+	.practice-body {
+		gap: calc(var(--spacing-gutter) / 3);
+	}
+
+	.practice-question {
+		padding: calc(var(--spacing-gutter) / 3);
+	}
+
+	.practice-word {
+		font-size: var(--text-headline-md);
+	}
+
+	.practice-options {
+		gap: calc(var(--spacing-gutter) / 3);
+	}
+
+	.practice-hud {
+		padding: calc(var(--spacing-gutter) / 4);
+	}
+
+	/* En una fila de 320px, «Nivel fácil» y el botón no caben juntos: el botón
+	   se lleva la línea entera y el nivel queda encima, que además lo hace más
+	   fácil de tocar. */
+	.practice-footer {
+		gap: calc(var(--spacing-gutter) / 3);
+	}
+
+	.practice-footer > :last-child {
+		padding-inline: calc(var(--spacing-gutter) / 2);
+		font-size: var(--text-caption);
+	}
+}
+
 @media (width >= 40rem) {
 	.practice {
 		padding: var(--spacing-screen-desktop);
+		gap: var(--spacing-gutter);
+	}
+
+	.practice-body {
+		gap: var(--spacing-gutter);
+	}
+
+	.practice-question {
+		padding: var(--spacing-gutter);
+	}
+
+	.practice-verdict {
+		font-size: var(--text-headline-md);
 	}
 
 	.practice-word {
