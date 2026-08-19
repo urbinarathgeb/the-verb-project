@@ -6,6 +6,7 @@ import GameModal from '@/components/GameModal.vue'
 import {useGameEngine} from '@/composables/useGameEngine'
 import {useRanking} from '@/composables/useRanking'
 import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
+import {MODE_LABELS} from '@/data/modes'
 import {formatDuration, formatPace} from '@/lib/format'
 import {FORM_LABELS} from '@/lib/practice'
 
@@ -36,9 +37,7 @@ const levelLabel = computed(() =>
 	result.value === null ? '' : LEVELS[result.value.difficulty].label,
 )
 
-const modeLabel = computed(() =>
-	result.value === null ? '' : result.value.mode === 'target' ? 'Contrarreloj' : 'Supervivencia',
-)
+const modeLabel = computed(() => (result.value === null ? '' : MODE_LABELS[result.value.mode]))
 
 /** Métricas destacadas, distintas por modo. */
 const metrics = computed(() => {

@@ -6,6 +6,7 @@ import RankingTable from '@/components/RankingTable.vue'
 import {useAuth} from '@/composables/useAuth'
 import {useRanking} from '@/composables/useRanking'
 import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
+import {MODE_LABELS} from '@/data/modes'
 import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/game'
 
 /**
@@ -18,11 +19,6 @@ import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/
 const router = useRouter()
 const {entries, isLoading, isEmpty, loadError, loadRanking} = useRanking()
 const {userId, isAuthenticated} = useAuth()
-
-const MODE_LABELS: Record<GameMode, string> = {
-	target: 'Contrarreloj',
-	precision: 'Supervivencia',
-}
 
 const selectedMode = ref<GameMode>('target')
 const selectedDifficulty = ref<Difficulty>('easy')

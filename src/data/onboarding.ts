@@ -10,6 +10,8 @@
  * habla de «tríadas», «pool» ni «modo Objetivo».
  */
 
+import {MODE_LABELS} from './modes'
+
 export interface OnboardingSection {
 	readonly title: string
 	/** Párrafos del bloque. Se pintan en orden. */
@@ -38,9 +40,11 @@ export const ONBOARDING_SECTIONS: readonly OnboardingSection[] = [
 	{
 		title: 'Las tres formas de jugar',
 		body: [
-			'Contrarreloj: empareja los verbos del objetivo antes de que se acabe el tiempo. Fallar no te elimina, pero te resta segundos.',
-			'Supervivencia: sin límite de tiempo, pero un solo fallo termina la partida. Cuenta cuántos verbos emparejas y a qué ritmo.',
-			'Dojo: sin reloj y sin perder. Te muestra una forma y te pregunta por otra, con tres opciones. Es donde se aprende sin prisa.',
+			// El nombre sale de `modes.ts` y la explicación se queda aquí: si un modo
+			// se vuelve a renombrar, este texto no hay que tocarlo.
+			`${MODE_LABELS.target}: empareja los verbos del objetivo antes de que se acabe el tiempo. Fallar no te elimina, pero te resta segundos.`,
+			`${MODE_LABELS.precision}: sin límite de tiempo, pero un solo fallo termina la partida. Cuenta cuántos verbos emparejas y a qué ritmo.`,
+			`${MODE_LABELS.practice}: sin reloj y sin perder. Te muestra una forma y te pregunta por otra, con tres opciones. Es donde se aprende sin prisa.`,
 		],
 	},
 ]

@@ -5,6 +5,7 @@ import ChoiceButton from '@/components/ChoiceButton.vue'
 import GameModal from '@/components/GameModal.vue'
 import {useAuth} from '@/composables/useAuth'
 import {LEVELS} from '@/data/levels'
+import {MODE_DESCRIPTIONS, MODE_LABELS} from '@/data/modes'
 import {ONBOARDING_SECTIONS, ONBOARDING_TITLE} from '@/data/onboarding'
 import {getVerbsForDifficulty} from '@/data/verbs'
 import {DIFFICULTIES, MENU_MODES, PRACTICE_MODE, type Difficulty, type MenuMode} from '@/types/game'
@@ -33,22 +34,6 @@ const {
 	signOut,
 } = useAuth()
 
-/** Textos de cada modo. Los identificadores van en inglés; lo visible, en español. */
-const MODE_INFO: Record<MenuMode, {label: string; description: string}> = {
-	target: {
-		label: 'Contrarreloj',
-		description: 'Empareja los verbos del objetivo antes de que se acabe el tiempo.',
-	},
-	precision: {
-		label: 'Supervivencia',
-		description: 'Sin límite de tiempo, pero un solo error termina la partida.',
-	},
-	practice: {
-		label: 'Dojo',
-		description: 'Sin reloj y sin perder: una forma, tres opciones y una racha que cuidar.',
-	},
-}
-
 const selectedMode = ref<MenuMode>('target')
 const selectedDifficulty = ref<Difficulty>('easy')
 
@@ -66,7 +51,7 @@ const showAvatar = computed(
 	() => avatarUrl.value !== null && avatarUrl.value !== failedAvatarUrl.value,
 )
 
-const modeDescription = computed(() => MODE_INFO[selectedMode.value].description)
+const modeDescription = computed(() => MODE_DESCRIPTIONS[selectedMode.value])
 
 /**
  * Resumen del nivel elegido, para que la dificultad no sea sólo una etiqueta.
@@ -119,6 +104,11 @@ const isHelpOpen = ref(false)
 function goToRanking(): void {
 	router.push({name: 'ranking'})
 }
+
+/** El progreso del Dojo. Como invitado existe, pero sólo mientras dure la sesión. */
+function goToProgress(): void {
+	router.push({name: 'progress'})
+}
 </script>
 
 <template>
@@ -138,7 +128,7 @@ function goToRanking(): void {
 						:selected="selectedMode === mode"
 						@click="selectedMode = mode"
 					>
-						{{ MODE_INFO[mode].label }}
+						{{ MODE_LABELS[mode] }}
 					</ChoiceButton>
 				</div>
 				<p class="home-hint">{{ modeDescription }}</p>
@@ -164,10 +154,13 @@ function goToRanking(): void {
 			<ChoiceButton variant="primary" class="home-play" @click="play">
 				{{ selectedMode === PRACTICE_MODE ? 'Entrar al Dojo' : 'Jugar' }}
 			</ChoiceButton>
-			<ChoiceButton variant="ghost" class="home-practice" @click="goToRanking">
+			<ChoiceButton variant="ghost" class="home-secondary" @click="goToRanking">
 				Ver clasificación
 			</ChoiceButton>
-			<ChoiceButton variant="ghost" class="home-practice" @click="isHelpOpen = true">
+			<ChoiceButton variant="ghost" class="home-secondary" @click="goToProgress">
+				Tu progreso
+			</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-secondary" @click="isHelpOpen = true">
 				¿Cómo se juega?
 			</ChoiceButton>
 		</div>
@@ -324,7 +317,7 @@ function goToRanking(): void {
 	font-size: var(--text-headline-md);
 }
 
-.home-practice {
+.home-secondary {
 	width: 100%;
 }
 
@@ -352,7 +345,7 @@ function goToRanking(): void {
 	width: 100%;
 	max-width: 32rem;
 	/* Alto del contenido resuelto, para que aparecer no desplace el menú. */
-	min-height: calc(var(--spacing-touch) + 2.4em);
+	min-height: calc(var(--spacing-touch) + 5em);
 }
 
 .home-account-row {
@@ -385,6 +378,13 @@ function goToRanking(): void {
 .home-account-error {
 	padding: calc(var(--spacing-gutter) / 3);
 	border: 3px solid var(--color-ink);
+	/*
+	 * En móvil el texto compite con un botón que no se encoge, y el recorte
+	 * pensado para nombres largos de Google acababa mutilando también la cadena
+	 * fija «Juegas como invitado» («Juegas como i…»), que es lo que ve todo el
+	 * que no ha iniciado sesión. Envolver deja el botón en su propia línea.
+	 */
+	flex-wrap: wrap;
 	background-color: var(--color-pink);
 	font-size: var(--text-caption);
 }
