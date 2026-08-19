@@ -2,7 +2,7 @@
 
 Juego web para aprender y practicar las formas de los verbos irregulares en inglés: presente, pasado y participio.
 
-En lugar de estudiar una tabla de gramática, se juega. El tablero muestra tres columnas desordenadas —una por forma verbal— y hay que emparejar las tres formas de cada verbo contra el reloj.
+En lugar de estudiar una tabla de gramática, se juega. El tablero muestra tres columnas desordenadas —una por forma verbal— y hay que emparejar las tres formas de cada verbo. Hay dos modos competitivos y un tercero sin reloj ni derrota, para aprender sin prisa.
 
 > **Estado:** prototipo en desarrollo. Los tres modos son jugables, con o sin cuenta, y el login con Google, la clasificación y el progreso persistente ya funcionan. Pendiente: ajustes de jugabilidad y cierre (ver `PLAN.md`).
 
@@ -19,7 +19,7 @@ Pulsar otra celda de una columna que ya tenía selección la reemplaza; pulsar l
 
 La reposición **tarda unos segundos a propósito**: durante esa espera puedes seguir acertando y el tablero se va vaciando, así que encadenar aciertos se nota. Y las tríadas nuevas ocupan sólo huecos: **ninguna celda que ya estuviera en el tablero se mueve de sitio**.
 
-Además espera a que haya al menos tres huecos antes de reponer. Con uno solo, la tríada nueva caería justo donde estaba la que acabas de resolver, y eso te la regalaría. Si encadenas tantos aciertos que el tablero se queda casi desierto, la reposición se adelanta sola.
+Además espera a que haya al menos tres huecos antes de reponer. Con uno solo, la tríada nueva caería justo donde estaba la que acabas de resolver, y eso te la regalaría. Esa espera **no es indefinida**: si dejas de acertar, pasado un margen se repone igual, porque quedarse con el tablero corto para siempre sería peor. Y si encadenas tantos aciertos que se queda casi desierto, la reposición se adelanta sola.
 
 ## Accesibilidad
 
@@ -129,6 +129,14 @@ Para que el acceso con Google funcione hace falta además, en el panel de Supaba
 | `pnpm format` | Prettier en modo escritura |
 
 `pnpm check` es el gate que debe pasar en verde antes de cualquier commit.
+
+### Despliegue
+
+La app usa historial HTML5, así que **ninguna ruta existe como archivo**: `/ranking` o `/auth/callback` sólo las resuelve el router una vez cargada la aplicación. El hosting tiene que servir `index.html` para cualquier ruta, o devolverá 404 al entrar por URL directa, al recargar dentro del juego y —de forma más visible— al volver de Google tras iniciar sesión.
+
+En Vercel lo resuelve `vercel.json`, versionado en el repo. En otro proveedor hay que configurar el mismo fallback (`_redirects` en Netlify, `try_files` en Nginx).
+
+Recuerda además que Vite **incrusta las variables `VITE_*` en tiempo de compilación**: definirlas en el panel del hosting no basta, hay que volver a construir.
 
 ## Stack
 
