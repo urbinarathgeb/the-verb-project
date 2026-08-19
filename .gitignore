@@ -17,6 +17,18 @@ coverage
 # Configuración local del agente y secretos
 .claude/settings.local.json
 .mcp.json
+# Configuración del servidor de previsualización: apunta a un puerto y a un
+# gestor de paquetes de esta máquina, no del proyecto.
+.claude/launch.json
+
+# Documentación interna de trabajo: el plan de ejecución y la especificación de
+# mecánicas se mantienen fuera del repositorio por decisión del autor.
+PLAN.md
+MECHANICS.md
+
+# Skills de terceros: 2,3 MB de documentación ajena copiada al repo. Se mantienen
+# fuera; `skills-lock.json` queda versionado como registro de su origen.
+.claude/skills/
 
 # Directorios de otros agentes: este proyecto solo usa Claude Code, y las skills
 # viven versionadas en `.claude/skills/` como copias reales (no enlaces).
