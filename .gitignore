@@ -21,10 +21,12 @@ coverage
 # gestor de paquetes de esta máquina, no del proyecto.
 .claude/launch.json
 
-# Documentación interna de trabajo: el plan de ejecución y la especificación de
-# mecánicas se mantienen fuera del repositorio por decisión del autor.
+# Documentación interna de trabajo: el plan de ejecución, la especificación de
+# mecánicas y la anatomía comentada del código se mantienen fuera del repositorio
+# por decisión del autor. ESTUDIO.md es además una vista derivada del código.
 PLAN.md
 MECHANICS.md
+ESTUDIO.md
 
 # Skills de terceros: 2,3 MB de documentación ajena copiada al repo. Se mantienen
 # fuera; `skills-lock.json` queda versionado como registro de su origen.
