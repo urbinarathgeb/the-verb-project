@@ -44,7 +44,7 @@ function goHome(): void {
 <template>
 	<section class="ranking">
 		<header class="ranking-header brutal-card paper-tilt-1">
-			<h1 class="ranking-heading">Clasificación</h1>
+			<h1 class="ranking-heading">Ranking</h1>
 		</header>
 
 		<div class="ranking-filters">
