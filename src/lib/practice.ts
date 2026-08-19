@@ -125,13 +125,23 @@ export function nextStreak(currentStreak: number, isCorrect: boolean): number {
 }
 
 /**
- * Enunciado completo, por ejemplo `spoke (pasado) → participio`.
+ * Enunciado completo en una frase, por ejemplo
+ * `spoke, en pasado. ¿Cuál es el participio?`.
  *
  * **La forma mostrada se etiqueta siempre**, y no es un adorno: hay verbos cuyo
  * texto coincide entre formas (`read` en presente y en pasado, `cut` en las
  * tres). Sin la etiqueta, el jugador no sabría desde dónde se le pregunta y la
  * pregunta sería irresoluble.
+ *
+ * Está redactado para **oírse**, no para leerse: es lo que se anuncia en la
+ * región viva del Dojo al aparecer cada pregunta, porque en pantalla el
+ * enunciado se reparte en tres líneas y un lector de pantalla no lo encuentra
+ * sin ir a buscarlo. Antes usaba una flecha (`spoke (pasado) → participio`), que
+ * se lee bien pero se escucha como «flecha derecha».
  */
 export function formatPrompt(question: PracticeQuestion): string {
-	return `${question.prompt} (${FORM_LABELS[question.promptForm]}) → ${FORM_LABELS[question.requestedForm]}`
+	const from = FORM_LABELS[question.promptForm]
+	const asked = FORM_LABELS[question.requestedForm]
+
+	return `${question.prompt}, en ${from}. ¿Cuál es el ${asked}?`
 }

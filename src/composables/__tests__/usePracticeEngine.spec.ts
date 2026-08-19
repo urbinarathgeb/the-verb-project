@@ -51,7 +51,7 @@ describe('usePracticeEngine — sesión', () => {
 		const question = engine.question.value
 
 		expect(engine.promptLabel.value).toContain(question?.prompt ?? '')
-		expect(engine.promptLabel.value).toContain('→')
+		expect(engine.promptLabel.value).toContain('¿Cuál es el')
 	})
 
 	it('no hay cronómetro: nada que iniciar ni detener', () => {

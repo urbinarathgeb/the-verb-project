@@ -162,38 +162,6 @@ function handleClick(): void {
 }
 
 @media (width >= 40rem) {
-	/* La celda repuesta aparece con un fundido. Se anima sólo la opacidad, que no
-   participa en el layout, así que el resto del tablero no se entera. */
-	@media (prefers-reduced-motion: no-preference) {
-		.verb-cell-entering {
-			animation: verb-cell-enter 300ms ease-out;
-		}
-	}
-
-	@keyframes verb-cell-enter {
-		from {
-			opacity: 0;
-		}
-
-		to {
-			opacity: 1;
-		}
-	}
-
-	/*
- * La transición hace que una tríada acertada se atenúe en lugar de apagarse de
- * golpe: `cell-resolved` cambia fondo, borde y opacidad, y esto los interpola.
- * La celda persiste en el DOM al resolverse, así que la transición se aplica.
- */
-	@media (prefers-reduced-motion: no-preference) {
-		.verb-cell {
-			transition:
-				background-color 400ms ease-out,
-				border-color 400ms ease-out,
-				opacity 400ms ease-out;
-		}
-	}
-
 	.verb-cell {
 		font-size: var(--text-headline-md);
 		padding: calc(var(--spacing-gutter) / 2);

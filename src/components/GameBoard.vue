@@ -132,7 +132,15 @@ function handleKeydown(event: KeyboardEvent): void {
 	gap: calc(var(--spacing-gutter) / 3);
 	width: 100%;
 	height: 100%;
-	min-height: 0;
+	/*
+	 * `height: 100%` reparte la altura disponible cuando sobra, y este mínimo
+	 * impide que el tablero se comprima por debajo de lo que ocupan sus celdas
+	 * cuando falta. Sin él, en un viewport bajo —`hard` pide unos 677px y un
+	 * iPhone SE tiene 667, y en horizontal cualquier móvil— las últimas filas
+	 * quedaban recortadas y, con el `overflow: hidden` de la pantalla,
+	 * inalcanzables: el tablero no se podía terminar.
+	 */
+	min-height: min-content;
 }
 
 @media (width >= 40rem) {

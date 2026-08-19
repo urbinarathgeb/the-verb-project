@@ -67,20 +67,28 @@ function markAvatarFailed(entry: RankingEntry): void {
 					:class="{'ranking-own': entry.userId === currentUserId}"
 				>
 					<td class="ranking-numeric">{{ entry.position }}</td>
-					<th scope="row" class="ranking-player">
-						<img
-							v-if="showAvatar(entry)"
-							:src="entry.avatarUrl ?? ''"
-							alt=""
-							width="24"
-							height="24"
-							class="ranking-avatar"
-							referrerpolicy="no-referrer"
-							@error="markAvatarFailed(entry)"
-						/>
-						<span class="ranking-name">{{ entry.displayName }}</span>
-						<!-- Marca textual además del color: el color solo no basta (WCAG 1.4.1). -->
-						<span v-if="entry.userId === currentUserId" class="ranking-you">tú</span>
+					<!--
+						La celda conserva su `display` de tabla y el `flex` vive en un `div`
+						interior: cambiar el `display` de un `th` lo saca del modelo de tabla
+						en varios motores, y con él se pierde el «fila 3, Jugador» que esta
+						tabla existe para dar.
+					-->
+					<th scope="row">
+						<div class="ranking-player">
+							<img
+								v-if="showAvatar(entry)"
+								:src="entry.avatarUrl ?? ''"
+								alt=""
+								width="24"
+								height="24"
+								class="ranking-avatar"
+								referrerpolicy="no-referrer"
+								@error="markAvatarFailed(entry)"
+							/>
+							<span class="ranking-name">{{ entry.displayName }}</span>
+							<!-- Marca textual además del color: el color solo no basta (WCAG 1.4.1). -->
+							<span v-if="entry.userId === currentUserId" class="ranking-you">tú</span>
+						</div>
 					</th>
 					<td class="ranking-numeric">{{ metricValue(entry) }}</td>
 					<td class="ranking-numeric">{{ secondaryValue(entry) }}</td>
@@ -199,5 +207,7 @@ function markAvatarFailed(entry: RankingEntry): void {
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	font-size: 0.625rem;
+	/* Hereda el recorte de la celda para que el nombre siga elipsándose. */
+	min-width: 0;
 }
 </style>

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed} from 'vue'
+import {computed, useTemplateRef} from 'vue'
 
 /**
  * Botón del sistema. Concentra el gesto de presión física y los tres pesos
@@ -13,11 +13,19 @@ const props = withDefaults(
 		 * alternativas y `ghost` para volver o cancelar.
 		 */
 		variant?: 'primary' | 'secondary' | 'ghost'
-		/** Marca la opción elegida en un grupo de selección. */
+		/**
+		 * Marca la opción elegida en un grupo de selección.
+		 *
+		 * **No tiene valor por defecto, y es deliberado.** `undefined` significa
+		 * «este botón no es un alternador» y omite `aria-pressed`; `false` significa
+		 * «es un alternador y no está pulsado». Con un `false` por defecto, botones
+		 * de acción como «Jugar» o «Volver al menú» se anunciaban como alternadores
+		 * sin pulsar, que es mentir sobre lo que hacen (WCAG 4.1.2).
+		 */
 		selected?: boolean
 		disabled?: boolean
 	}>(),
-	{variant: 'secondary', selected: false, disabled: false},
+	{variant: 'secondary', disabled: false},
 )
 
 const VARIANT_CLASSES = {
@@ -27,10 +35,21 @@ const VARIANT_CLASSES = {
 } as const
 
 const variantClass = computed(() => VARIANT_CLASSES[props.variant])
+
+/*
+ * Se expone `focus()` en lugar de dejar que el padre alcance el `$el` del
+ * componente: `<script setup>` es cerrado por defecto, y una interfaz explícita
+ * sobrevive a que el marcado interno cambie. Lo usa el Dojo para llevar el foco
+ * a «Siguiente» cuando la opción pulsada se deshabilita.
+ */
+const root = useTemplateRef<HTMLButtonElement>('root')
+
+defineExpose({focus: () => root.value?.focus()})
 </script>
 
 <template>
 	<button
+		ref="root"
 		type="button"
 		class="choice-button"
 		:class="[variantClass, {'choice-selected': selected}, disabled ? '' : 'brutal-press']"

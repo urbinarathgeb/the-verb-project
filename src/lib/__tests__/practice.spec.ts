@@ -271,12 +271,22 @@ describe('nextStreak', () => {
 })
 
 describe('formatPrompt', () => {
-	it('usa la forma `verbo (forma mostrada) → forma pedida`', () => {
+	it('arma una frase con el verbo, su forma y la que se pide', () => {
 		const q = question()
 
 		expect(formatPrompt(q)).toBe(
-			`${q.prompt} (${FORM_LABELS[q.promptForm]}) → ${FORM_LABELS[q.requestedForm]}`,
+			`${q.prompt}, en ${FORM_LABELS[q.promptForm]}. ¿Cuál es el ${FORM_LABELS[q.requestedForm]}?`,
 		)
+	})
+
+	/**
+	 * Se anuncia por voz, así que no puede llevar símbolos: la flecha que usaba
+	 * antes se escuchaba como «flecha derecha» en mitad del enunciado.
+	 */
+	it('no usa símbolos que un lector de pantalla tendría que deletrear', () => {
+		for (let seed = 0; seed < 20; seed++) {
+			expect(formatPrompt(question(seed))).not.toMatch(/[→>|/]/)
+		}
 	})
 
 	/**
@@ -287,7 +297,7 @@ describe('formatPrompt', () => {
 	it('indica siempre de qué forma parte el enunciado', () => {
 		for (let seed = 0; seed < 20; seed++) {
 			const q = question(seed)
-			expect(formatPrompt(q)).toContain(`(${FORM_LABELS[q.promptForm]})`)
+			expect(formatPrompt(q)).toContain(`en ${FORM_LABELS[q.promptForm]}`)
 		}
 	})
 

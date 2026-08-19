@@ -68,8 +68,12 @@ const ACCENT_CLASSES = {
 	 * sin scroll, que es el requisito de la app a pantalla completa.
 	 */
 	flex: 1 1 auto;
-	/* Permite que las celdas se encojan por debajo de su tamaño de contenido. */
-	min-height: 0;
+	/*
+	 * Las celdas nunca se encogen por debajo de su altura mínima: el suelo táctil
+	 * de 44px (`CLAUDE.md` §11) manda sobre el encaje en pantalla. Cuando no
+	 * caben, quien se adapta es la pantalla, que desplaza el tablero.
+	 */
+	min-height: min-content;
 }
 
 @media (width >= 40rem) {
