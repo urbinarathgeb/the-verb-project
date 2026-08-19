@@ -4,7 +4,7 @@ Juego web para aprender y practicar las formas de los verbos irregulares en ingl
 
 En lugar de estudiar una tabla de gramática, se juega. El tablero muestra tres columnas desordenadas —una por forma verbal— y hay que emparejar las tres formas de cada verbo. Hay dos modos competitivos y un tercero sin reloj ni derrota, para aprender sin prisa.
 
-> **Estado:** prototipo en desarrollo. Los tres modos son jugables, con o sin cuenta, y el login con Google, la clasificación y el progreso persistente ya funcionan. Pendiente: ajustes de jugabilidad y cierre (ver `PLAN.md`).
+> **Estado:** prototipo en desarrollo. Los tres modos son jugables, con o sin cuenta, y el login con Google, la clasificación y el progreso persistente ya funcionan. Pendiente: ajustes de jugabilidad y cierre.
 
 ## Cómo se juega
 
@@ -19,13 +19,21 @@ Pulsar otra celda de una columna que ya tenía selección la reemplaza; pulsar l
 
 La reposición **tarda unos segundos a propósito**: durante esa espera puedes seguir acertando y el tablero se va vaciando, así que encadenar aciertos se nota. Y las tríadas nuevas ocupan sólo huecos: **ninguna celda que ya estuviera en el tablero se mueve de sitio**.
 
+Durante la partida, el aspa del marcador —o `Esc`— pide confirmación para abandonar y volver al menú. Y si mandas la pestaña a segundo plano, **la partida se pausa y el reloj se detiene**: se reanuda cuando tú lo digas, no al volver. Una notificación o una llamada ya no arruinan una partida.
+
 Además espera a que haya al menos tres huecos antes de reponer. Con uno solo, la tríada nueva caería justo donde estaba la que acabas de resolver, y eso te la regalaría. Esa espera **no es indefinida**: si dejas de acertar, pasado un margen se repone igual, porque quedarse con el tablero corto para siempre sería peor. Y si encadenas tantos aciertos que se queda casi desierto, la reposición se adelanta sola.
 
 ## Accesibilidad
 
-El tablero se puede jugar entero con el teclado: **flechas** para moverse entre celdas y columnas, **Enter** o **Espacio** para seleccionar. Los modales atrapan el foco mientras están abiertos y lo devuelven al cerrarse.
+El tablero se puede jugar entero con el teclado: **flechas** para moverse entre celdas y columnas, **Enter** o **Espacio** para seleccionar. Los modales atrapan el foco mientras están abiertos y lo devuelven al cerrarse. Los que se pueden descartar —el «¿Cómo se juega?» y la confirmación de abandonar— se cierran con `Esc`, tocando fuera o con el aspa de su cabecera, que se queda fija junto con los botones aunque el texto sea largo.
 
-El resultado de cada jugada se anuncia a los lectores de pantalla, ya que de otro modo sólo se comunicaría por color y movimiento. Todos los colores del sistema superan el nivel AAA de contraste de WCAG, y las animaciones se desactivan si el sistema pide reducir movimiento.
+En el Dojo, las teclas **1**, **2** y **3** responden, y el foco salta solo al botón «Siguiente» al contestar, de modo que se puede encadenar preguntas sin tocar el ratón.
+
+El resultado de cada jugada se anuncia a los lectores de pantalla, ya que de otro modo sólo se comunicaría por color y movimiento. Cada pregunta nueva del Dojo también se anuncia entera. Todos los colores del sistema superan el nivel AAA de contraste de WCAG, y las animaciones se desactivan si el sistema pide reducir movimiento.
+
+En móvil, el acierto y el fallo se acompañan de una **vibración corta**, que también se omite si se ha pedido reducir movimiento.
+
+Si el tablero no cabe a lo alto —el nivel difícil en un móvil pequeño, o cualquier nivel en horizontal—, se desplaza en lugar de encoger las celdas: el área táctil de 44 px no se sacrifica nunca.
 
 ## Modos
 
@@ -58,6 +66,7 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 - `/practice/:difficulty` — Dojo, sin reloj.
 - `/result` — desenlace con las métricas del modo jugado y, si hubo fallos, un repaso de cada uno con las formas correctas. Si bates tu marca, la posición en la clasificación; si no, tu mejor marca en ese nivel.
 - `/ranking` — clasificación por modo y nivel.
+- `/progress` — qué verbos dominas y cuáles se te resisten, con lo peor primero.
 - `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige al menú.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
 
@@ -97,9 +106,17 @@ Lo que se manda son **incrementos**, no totales: «suma un acierto al verbo 7».
 
 Lo practicado **como invitado no se sube** al iniciar sesión después: no se pidió atribuírselo a esa cuenta.
 
+Todo eso se ve en `/progress`, accesible desde el menú: cuántos verbos dominas, cuántos has tocado y tu porcentaje global, más la lista de los practicados **ordenada por lo que peor se te da**. Un verbo cuenta como dominado con al menos 3 aciertos y un 80 % de acierto: sólo el porcentaje sería frágil con tres opciones, y sólo el número premiaría insistir hasta acertar.
+
+## Instalarla como aplicación
+
+La app trae manifiesto e iconos, así que el navegador ofrece instalarla y entonces se abre sin barra de direcciones, a pantalla completa. **No fija la orientación** a propósito: aunque el tablero esté pensado para vertical, WCAG 1.3.4 pide no restringirla, y en horizontal el tablero se desplaza.
+
+Instalada no hay botón «atrás» del navegador, y por eso la partida tiene su propia salida en el marcador.
+
 ## Desarrollo
 
-Requiere [pnpm](https://pnpm.io) y Node 22.18+ o 24.12+.
+Requiere [pnpm](https://pnpm.io) y **Node 22.18+ o 24.12+**; con una versión por debajo, pnpm avisa en cada comando (`Unsupported engine`).
 
 ```sh
 pnpm install
@@ -145,6 +162,6 @@ Vue 3.5 (Composition API con `<script setup>`), TypeScript estricto, Vite, Tailw
 ## Documentación del proyecto
 
 - **`PRODUCT.md`** — el problema y la propuesta de valor.
-- **`MECHANICS.md`** — especificación de las mecánicas de juego.
-- **`PLAN.md`** — plan de ejecución y bitácora de decisiones.
 - **`CLAUDE.md`** — convenciones técnicas y protocolos de trabajo.
+
+La especificación de mecánicas y el plan de ejecución con su bitácora de decisiones son documentación interna y no forman parte del repositorio.

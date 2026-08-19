@@ -50,8 +50,9 @@ Como tu Ingeniero de IA y Desarrollador Senior, mi función es garantizar que es
 * **Control Estricto:** NUNCA realizaré `git commit` ni `git push` de forma autónoma.
 * **Acción Manual:** El único canal para ejecutar comandos de Git (commit y push) es la invocación explícita de `/autocommit`. No ejecutaré `git commit` ni `git push` por iniciativa propia ni por ninguna otra vía.
 * **Comando `/autocommit`:** vive en `.claude/commands/autocommit.md`, versionado en el repo. Agrupa cambios por intención y genera commits semánticos automáticamente. Al invocarlo, se ejecutarán múltiples commits y un push en esa sesión sin pedirte confirmación commit por commit.
-* **Archivos de agente versionados:** `CLAUDE.md`, `PLAN.md` y `.claude/commands/` se commitean normalmente al repo, igual que cualquier otro archivo del proyecto — son memoria compartida, no configuración personal.
-* **Excepción real:** `.claude/settings.local.json` y cualquier `.env`/secreto quedan en `.gitignore` y nunca se commitean, ni manual ni automáticamente vía `/autocommit`.
+* **Archivos de agente versionados:** `CLAUDE.md`, `.claude/commands/` y `.claude/skills/` se commitean normalmente al repo, igual que cualquier otro archivo del proyecto — son memoria compartida, no configuración personal.
+* **Documentación interna fuera del repo:** `PLAN.md` y `MECHANICS.md` **no se versionan** y están en `.gitignore`. Siguen siendo las fuentes de verdad del plan y de las mecánicas, y se mantienen igual de vivos que antes: lo único que cambia es que viven sólo en la máquina del autor. Al citarlos desde documentación pública como el `README.md`, hay que tener presente que quien clone el repositorio no los tendrá.
+* **Excepción real:** `.claude/settings.local.json`, `.claude/launch.json` y cualquier `.env`/secreto quedan en `.gitignore` y nunca se commitean, ni manual ni automáticamente vía `/autocommit`.
 
 ### 5. Estándares Técnicos y de Código
 
@@ -164,7 +165,9 @@ La separación anterior solo funciona si las skills se consultan de verdad. Por 
 
 Si una skill relevante **no está disponible**, hay que decirlo explícitamente en el reporte de la tarea en lugar de continuar en silencio.
 
-**Instalación:** las skills viven como **directorios reales versionados** en `.claude/skills/`, que es la convención nativa de Claude Code. No se usan enlaces simbólicos ni el directorio `.agents/` de la CLI multi-agente: quien clone el repo tiene las skills disponibles sin ejecutar nada.
+**Instalación:** las skills viven como **directorios reales** en `.claude/skills/`, que es la convención nativa de Claude Code. No se usan enlaces simbólicos ni el directorio `.agents/` de la CLI multi-agente.
+
+**No se versionan:** `.claude/skills/` está en `.gitignore`. Son 2,3 MB de documentación de terceros copiada al repositorio, que no es código del proyecto y no cambia con él. La contrapartida asumida es que quien clone el repo **no tiene las skills** y debe instalarlas antes de trabajar.
 
 Para añadir o actualizar una skill hay que usar siempre `--copy` y acotar el agente, para no regenerar directorios de otros agentes:
 
@@ -172,7 +175,7 @@ Para añadir o actualizar una skill hay que usar siempre `--copy` y acotar el ag
 npx skills add <owner>/<repo> --skill <nombre> --copy --agent claude-code -y
 ```
 
-`skills-lock.json` queda versionado como registro del origen de cada skill.
+`skills-lock.json` **sí queda versionado**, como registro del origen de cada skill y punto de partida para reinstalarlas. No es una reproducción fiel del directorio local, y conviene saberlo antes de confiar en él: no incluye `ui-ux-pro-max`, lista dos skills que se descartaron a propósito (`frontend-design` y `typescript-advanced-types`), y reinstalar `impeccable` desde ahí devolvería los scripts ejecutables y subagentes que este repo eliminó (ver el aviso de arriba).
 
 ---
 
