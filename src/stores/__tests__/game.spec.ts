@@ -144,8 +144,10 @@ describe('useGameStore — arranque de partida', () => {
 
 		store.startGame('target', 'hard')
 
-		expect(store.visibleCount).toBe(getLevelConfig('hard').boardSize)
-		expect(VERB_FORMS.every((form) => store.columns[form].length === 10)).toBe(true)
+		const {boardSize} = getLevelConfig('hard')
+
+		expect(store.visibleCount).toBe(boardSize)
+		expect(VERB_FORMS.every((form) => store.columns[form].length === boardSize)).toBe(true)
 	})
 
 	it('pone el reloj en marcha', () => {

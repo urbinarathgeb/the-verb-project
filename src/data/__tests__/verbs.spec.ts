@@ -119,19 +119,38 @@ describe('getVerbsForDifficulty', () => {
 		},
 	)
 
-	it('el pool de hard incluye el catálogo completo', () => {
-		expect(getVerbsForDifficulty('hard').length).toBe(VERBS.length)
-	})
-
-	it('los pools son acumulativos: easy ⊆ medium ⊆ hard', () => {
-		const ids = (difficulty: 'easy' | 'medium' | 'hard') =>
-			new Set(getVerbsForDifficulty(difficulty).map((verb) => verb.id))
-
-		const easy = ids('easy')
-		const medium = ids('medium')
-		const hard = ids('hard')
+	/**
+	 * `easy ⊆ medium` sigue en pie: subir de fácil a medio añade verbos, no los
+	 * cambia, así que lo aprendido se sigue practicando.
+	 */
+	it('el pool de medium incluye entero el de easy', () => {
+		const easy = new Set(getVerbsForDifficulty('easy').map((verb) => verb.id))
+		const medium = new Set(getVerbsForDifficulty('medium').map((verb) => verb.id))
 
 		expect([...easy].every((id) => medium.has(id))).toBe(true)
-		expect([...medium].every((id) => hard.has(id))).toBe(true)
+		expect(medium.size).toBeGreaterThan(easy.size)
+	})
+
+	/**
+	 * `hard` **rompe** esa cadena a propósito, y este test lo fija para que nadie
+	 * la restaure sin querer: antes servía el catálogo entero y preguntaba `be` y
+	 * `go` igual que el nivel fácil, de modo que su dificultad venía sólo del
+	 * tamaño del tablero. Ahora es el repertorio que el fácil no enseña.
+	 */
+	it('el pool de hard deja fuera los verbos exclusivos de principiante', () => {
+		const easy = new Set(getVerbsForDifficulty('easy').map((verb) => verb.id))
+		const hard = getVerbsForDifficulty('hard')
+
+		expect(hard.some((verb) => easy.has(verb.id))).toBe(false)
+		expect(hard.every((verb) => verb.level !== 'beginner')).toBe(true)
+	})
+
+	it('entre easy y hard cubren el catálogo completo', () => {
+		const cubiertos = new Set([
+			...getVerbsForDifficulty('easy').map((verb) => verb.id),
+			...getVerbsForDifficulty('hard').map((verb) => verb.id),
+		])
+
+		expect(cubiertos.size).toBe(VERBS.length)
 	})
 })

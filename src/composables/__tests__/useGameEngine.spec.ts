@@ -114,7 +114,7 @@ describe('useGameEngine — contrato de reactividad', () => {
 
 		expect(engine.mode.value).toBe('target')
 		expect(engine.difficulty.value).toBe('hard')
-		expect(engine.level.value?.boardSize).toBe(10)
+		expect(engine.level.value?.boardSize).toBe(getLevelConfig('hard').boardSize)
 	})
 })
 

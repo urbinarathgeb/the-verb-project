@@ -101,13 +101,28 @@ export const LEVELS = Object.freeze({
 		refillGraceMs: 5 * SECOND,
 		errorPenaltyMs: 2 * SECOND,
 	}),
+	/*
+	 * `hard` dejó de ser «todo el catálogo, y más grande».
+	 *
+	 * Antes servía los 106 verbos con 10 celdas por columna, y eso tenía dos
+	 * problemas. Uno de repertorio: el nivel difícil te preguntaba `be` y `go`,
+	 * los mismos que el fácil, así que la dificultad venía sólo del tamaño del
+	 * tablero. Y otro de encaje: 30 celdas en pantalla contradicen la nota de
+	 * `MECHANICS.md` §7 —18 caben en un móvil, 30 no— y el tablero se desplazaba.
+	 *
+	 * Ahora el pool son los 57 verbos que el fácil no enseña, y el tablero baja a
+	 * 8 celdas. **El objetivo y el reloj no cambian**, así que sigue siendo el
+	 * nivel más exigente: 4,2 s por acierto frente a los 4,5 s de medio, sobre un
+	 * repertorio más duro. Lo que cambia es de dónde viene la dificultad.
+	 */
 	hard: Object.freeze({
 		id: 'hard',
 		label: 'Difícil',
-		verbLevels: Object.freeze(['beginner', 'intermediate', 'advanced'] as const),
-		boardSize: 10,
+		verbLevels: Object.freeze(['intermediate', 'advanced'] as const),
+		boardSize: 8,
 		refillMinVacancies: 3,
-		refillForceVacancies: 9,
+		/* `N − 1`: se fuerza cuando queda una sola tríada jugable (`MECHANICS.md` §7). */
+		refillForceVacancies: 7,
 		targetVerbs: 24,
 		timeLimitMs: 100 * SECOND,
 		refillDelayMs: 5 * SECOND,

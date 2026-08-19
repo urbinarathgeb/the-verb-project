@@ -1,6 +1,6 @@
 import {describe, expect, it} from 'vitest'
 import {LEVELS, MIN_MATCHES_FOR_RANKING, getLevelConfig} from '../levels'
-import {DIFFICULTIES} from '@/types/game'
+import {DIFFICULTIES, type Difficulty} from '@/types/game'
 import {VERB_LEVELS} from '@/types/verb'
 
 describe('configuración de niveles', () => {
@@ -39,19 +39,34 @@ describe('configuración de niveles', () => {
 		expect(errorPenaltyMs).toBeLessThan(timeLimitMs)
 	})
 
+	/**
+	 * La dificultad crece, pero **no por el tamaño del tablero**. `hard` comparte
+	 * las 8 celdas de `medium` a propósito: 30 celdas no caben en un móvil
+	 * (`MECHANICS.md` §7) y su dificultad viene del objetivo y del repertorio, no
+	 * de llenar más la pantalla. Por eso el tablero se compara con «no decrece» y
+	 * el objetivo con «crece».
+	 */
 	it('la dificultad crece de forma monótona', () => {
 		const easy = LEVELS.easy
 		const medium = LEVELS.medium
 		const hard = LEVELS.hard
 
-		expect(easy.boardSize).toBeLessThan(medium.boardSize)
-		expect(medium.boardSize).toBeLessThan(hard.boardSize)
+		expect(medium.boardSize).toBeGreaterThan(easy.boardSize)
+		expect(hard.boardSize).toBeGreaterThanOrEqual(medium.boardSize)
 
 		expect(easy.targetVerbs).toBeLessThan(medium.targetVerbs)
 		expect(medium.targetVerbs).toBeLessThan(hard.targetVerbs)
+	})
 
-		expect(easy.verbLevels.length).toBeLessThan(medium.verbLevels.length)
-		expect(medium.verbLevels.length).toBeLessThan(hard.verbLevels.length)
+	/**
+	 * El ritmo exigido es lo que separa de verdad a `hard` de `medium` desde que
+	 * comparten tablero: segundos disponibles por acierto, de más a menos.
+	 */
+	it('cada nivel deja menos tiempo por acierto que el anterior', () => {
+		const perMatch = (level: (typeof LEVELS)[Difficulty]) => level.timeLimitMs / level.targetVerbs
+
+		expect(perMatch(LEVELS.medium)).toBeLessThan(perMatch(LEVELS.easy))
+		expect(perMatch(LEVELS.hard)).toBeLessThan(perMatch(LEVELS.medium))
 	})
 
 	it('la configuración está congelada', () => {
