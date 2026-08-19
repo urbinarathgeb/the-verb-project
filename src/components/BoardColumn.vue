@@ -46,9 +46,16 @@ const ACCENT_CLASSES = {
 	padding: calc(var(--spacing-gutter) / 4);
 	border: 3px solid var(--color-ink);
 	box-shadow: var(--shadow-brutal-xs);
-	font-size: var(--text-caption);
 	text-align: center;
-	letter-spacing: 0.08em;
+	/*
+	 * «Participio» es la palabra más larga en la columna más estrecha: a 320px
+	 * medía 88px dentro de una caja de 85px y se cortaba la última letra. Lo que
+	 * sobra es el tracking en versales, no el texto; el bloque de escritorio de
+	 * abajo restaura ambos en cuanto hay ancho.
+	 */
+	font-size: 0.625rem;
+	letter-spacing: 0;
+	white-space: nowrap;
 }
 
 .column-accent-cyan {
@@ -83,6 +90,7 @@ const ACCENT_CLASSES = {
 
 	.column-header {
 		font-size: var(--text-label-bold);
+		letter-spacing: 0.08em;
 		padding: calc(var(--spacing-gutter) / 3);
 	}
 

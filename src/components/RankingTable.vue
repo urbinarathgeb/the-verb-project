@@ -124,13 +124,20 @@ function markAvatarFailed(entry: RankingEntry): void {
 }
 
 .ranking-table .ranking-rank-column {
-	width: 2.5rem;
+	width: 2.25rem;
 }
 
-/* Ancha lo justo para que quepa «ACIERTOS», el encabezado más largo: como van
-   en `nowrap`, una columna más estrecha desbordaría la tabla en móvil. */
+/*
+ * Anchas lo justo para que quepa «ACIERTOS», el encabezado más largo: como van
+ * en `nowrap`, una columna más estrecha desbordaría la tabla en móvil.
+ *
+ * Lo que decide este número es el **encabezado**, no el dato, que es de uno a
+ * cinco caracteres. Por eso se compacta el encabezado en móvil justo debajo: lo
+ * que se libera aquí es lo que deja de recortar el nombre del jugador, que a
+ * 375px se quedaba en «Javier …» mientras estas columnas iban holgadas.
+ */
 .ranking-table .ranking-metric-column {
-	width: 5.5rem;
+	width: 4rem;
 }
 
 .ranking-caption {
@@ -145,7 +152,9 @@ function markAvatarFailed(entry: RankingEntry): void {
 
 .ranking-table th,
 .ranking-table td {
-	padding: calc(var(--spacing-gutter) / 3) calc(var(--spacing-gutter) / 2);
+	/* El relleno horizontal es el segundo sitio de donde sale ancho para el
+	   nombre: cuatro columnas lo pagan dos veces cada una. */
+	padding: calc(var(--spacing-gutter) / 3);
 	text-align: left;
 	border-bottom: 2px solid var(--color-ink);
 }
@@ -153,9 +162,28 @@ function markAvatarFailed(entry: RankingEntry): void {
 .ranking-table thead th {
 	font-family: var(--font-display);
 	text-transform: uppercase;
-	letter-spacing: 0.06em;
+	/* Compacto en móvil, como las etiquetas del HUD; el bloque de escritorio de
+	   abajo restaura el tamaño del sistema en cuanto hay ancho. */
+	font-size: 0.625rem;
+	letter-spacing: 0;
 	background-color: var(--color-cyan);
 	border-bottom: 3px solid var(--color-ink);
+}
+
+@media (width >= 40rem) {
+	.ranking-table .ranking-metric-column {
+		width: 5.5rem;
+	}
+
+	.ranking-table th,
+	.ranking-table td {
+		padding: calc(var(--spacing-gutter) / 3) calc(var(--spacing-gutter) / 2);
+	}
+
+	.ranking-table thead th {
+		font-size: var(--text-caption);
+		letter-spacing: 0.06em;
+	}
 }
 
 .ranking-table tbody tr:last-child th,
@@ -179,6 +207,8 @@ function markAvatarFailed(entry: RankingEntry): void {
 	align-items: center;
 	gap: calc(var(--spacing-gutter) / 3);
 	font-weight: 500;
+	/* Hereda el recorte de la celda para que el nombre siga elipsándose. */
+	min-width: 0;
 }
 
 .ranking-avatar {
@@ -207,7 +237,5 @@ function markAvatarFailed(entry: RankingEntry): void {
 	font-family: var(--font-display);
 	text-transform: uppercase;
 	font-size: 0.625rem;
-	/* Hereda el recorte de la celda para que el nombre siga elipsándose. */
-	min-width: 0;
 }
 </style>
