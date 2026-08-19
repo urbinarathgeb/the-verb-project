@@ -42,19 +42,25 @@ function visibleVerbIds(store: Store): number[] {
 		.map((cell) => cell.verbId)
 }
 
-/** Resuelve una tríada y deja pasar el retardo para que entre la reposición. */
-function solveAndRefill(store: Store, verbId: number): void {
-	solve(store, verbId)
-	advance((store.level?.refillDelayMs ?? 0) + REFILL_APPEAR_MS)
-}
-
-/** Resuelve `count` tríadas seguidas, esperando la reposición entre cada una. */
+/**
+ * Resuelve `count` tríadas como lo haría un jugador rápido: encadena mientras
+ * haya tríadas jugables y sólo deja correr el reloj cuando el tablero se agota.
+ *
+ * Esperar entre cada acierto consumiría el límite de tiempo y las partidas de
+ * Contrarreloj se perderían por reloj en vez de comprobar lo que interesa.
+ */
 function solveMany(store: Store, count: number): void {
 	for (let index = 0; index < count; index++) {
-		const [next] = visibleVerbIds(store)
+		let next = visibleVerbIds(store)[0]
+
+		if (next === undefined) {
+			advance((store.level?.refillDelayMs ?? 0) + REFILL_APPEAR_MS)
+			next = visibleVerbIds(store)[0]
+		}
+
 		if (next === undefined) return
 
-		solveAndRefill(store, next)
+		solve(store, next)
 	}
 }
 
@@ -65,6 +71,12 @@ function solve(store: Store, verbId: number): void {
 
 /** Falla a propósito combinando celdas de dos verbos distintos. */
 function fail(store: Store): void {
+	// Hacen falta dos verbos jugables; si el tablero se vació, se espera a que
+	// entren reposiciones.
+	if (visibleVerbIds(store).length < 2) {
+		advance((store.level?.refillDelayMs ?? 0) + REFILL_APPEAR_MS)
+	}
+
 	const [first, second] = visibleVerbIds(store)
 	store.selectCell(cellOf(store, first ?? 0, 'present'))
 	store.selectCell(cellOf(store, first ?? 0, 'past'))
@@ -107,6 +119,7 @@ describe('useGameStore — estado inicial', () => {
 			'completedAt',
 			'difficulty',
 			'errors',
+			'mistakeAttempts',
 			'mode',
 			'status',
 		])
@@ -153,8 +166,8 @@ describe('useGameStore — arranque de partida', () => {
 		expect(store.remainingMs).toBe(getLevelConfig('easy').timeLimitMs)
 	})
 
-	/** En Precisión no hay límite: el cronómetro sube (`MECHANICS.md` §3). */
-	it('el Modo Precisión no tiene límite de tiempo', () => {
+	/** En Supervivencia no hay límite: el cronómetro sube (`MECHANICS.md` §3). */
+	it('el Modo Supervivencia no tiene límite de tiempo', () => {
 		const store = useGameStore()
 
 		store.startGame('precision', 'easy')
@@ -297,7 +310,7 @@ describe('useGameStore — jugadas', () => {
 	/**
 	 * El caso que destapó el defecto: el tablero tiene que volver a llenarse.
 	 *
-	 * Se juega en Precisión porque Contrarreloj ganaría al alcanzar el objetivo y
+	 * Se juega en Supervivencia porque Contrarreloj ganaría al alcanzar el objetivo y
 	 * cancelaría las reposiciones pendientes antes de poder comprobarlo.
 	 */
 	it('vuelve a su tamaño completo tras una racha larga', () => {
@@ -458,7 +471,7 @@ describe('useGameStore — fin de partida', () => {
 		expect(store.isFinished).toBe(true)
 	})
 
-	it('el Modo Precisión nunca pierde por tiempo', () => {
+	it('el Modo Supervivencia nunca pierde por tiempo', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
 
@@ -648,7 +661,7 @@ describe('Modo Objetivo — penalización por error', () => {
 		expect(store.remainingMs).toBe(0)
 	})
 
-	it('el Modo Precisión no penaliza el tiempo', () => {
+	it('el Modo Supervivencia no penaliza el tiempo', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
 		advance(10 * SECOND)
@@ -703,18 +716,24 @@ describe('Modo Objetivo — victoria', () => {
 
 	it('la victoria detiene el reloj', () => {
 		const store = useGameStore()
-		const {targetVerbs, refillDelayMs} = getLevelConfig('easy')
+		const {targetVerbs} = getLevelConfig('easy')
 		store.startGame('target', 'easy')
 		advance(15 * SECOND)
 
 		solveMany(store, targetVerbs)
 
 		expect(store.isTimerRunning).toBe(false)
-		// Cada acierto espera su reposición, salvo el último: la victoria corta el
-		// reloj antes de que ese retardo llegue a correr.
-		expect(store.result?.timeMs).toBe(
-			15 * SECOND + (targetVerbs - 1) * (refillDelayMs + REFILL_APPEAR_MS),
-		)
+
+		// Lo que importa no es el número exacto —depende de cuántas veces haya que
+		// esperar reposición— sino que el reloj quede congelado: dejar correr el
+		// tiempo después de ganar no puede cambiar el resultado registrado.
+		const registrado = store.result?.timeMs
+
+		expect(registrado).toBeGreaterThan(0)
+
+		advance(30 * SECOND)
+
+		expect(store.result?.timeMs).toBe(registrado)
 	})
 
 	it('los errores previos no impiden ganar', () => {
@@ -742,8 +761,8 @@ describe('Modo Objetivo — victoria', () => {
 		expect(store.status).toBe('won')
 	})
 
-	/** En Precisión no hay objetivo: se juega hasta fallar (`MECHANICS.md` §3). */
-	it('el Modo Precisión no tiene objetivo ni gana por aciertos', () => {
+	/** En Supervivencia no hay objetivo: se juega hasta fallar (`MECHANICS.md` §3). */
+	it('el Modo Supervivencia no tiene objetivo ni gana por aciertos', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
 
@@ -793,7 +812,7 @@ describe('Modo Objetivo — candidatura al ranking', () => {
 	})
 })
 
-describe('Modo Precisión — muerte súbita', () => {
+describe('Modo Supervivencia — muerte súbita', () => {
 	/** Un solo error termina la ronda inmediatamente (`MECHANICS.md` §3). */
 	it('el primer fallo termina la partida', () => {
 		const store = useGameStore()
@@ -866,7 +885,7 @@ describe('Modo Precisión — muerte súbita', () => {
 	})
 })
 
-describe('Modo Precisión — victoria por tablero vacío', () => {
+describe('Modo Supervivencia — victoria por tablero vacío', () => {
 	/**
 	 * No hay objetivo de aciertos: se juega hasta fallar o hasta agotar el pool del
 	 * nivel, que es la victoria.
@@ -895,7 +914,7 @@ describe('Modo Precisión — victoria por tablero vacío', () => {
 	})
 })
 
-describe('Modo Precisión — ritmo y ranking', () => {
+describe('Modo Supervivencia — ritmo y ranking', () => {
 	it('el ritmo se calcula en vivo durante la partida', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -965,5 +984,83 @@ describe('Modo Precisión — ritmo y ranking', () => {
 		expect(store.result?.timeMs).toBe(300)
 		expect(store.pace).toBe(200)
 		expect(store.isRankingEligible).toBe(false)
+	})
+})
+
+describe('useGameStore — registro de fallos', () => {
+	it('empieza sin fallos', () => {
+		const store = useGameStore()
+		store.startGame('target', 'easy')
+
+		expect(store.mistakes).toEqual([])
+	})
+
+	it('guarda las tres celdas de cada intento fallido', () => {
+		const store = useGameStore()
+		store.startGame('target', 'easy')
+
+		fail(store)
+
+		expect(store.mistakes).toHaveLength(1)
+		expect(store.mistakes[0]?.chosen).toHaveLength(3)
+		// Se ordena por columna, no por orden de pulsación.
+		expect(store.mistakes[0]?.chosen.map((choice) => choice.form)).toEqual([
+			'present',
+			'past',
+			'participle',
+		])
+	})
+
+	it('explica las tríadas de los verbos implicados', () => {
+		const store = useGameStore()
+		store.startGame('target', 'easy')
+
+		fail(store)
+
+		const triads = store.mistakes[0]?.triads ?? []
+
+		expect(triads.length).toBeGreaterThan(0)
+		// Cada tríada trae las tres formas, que es lo que se enseña.
+		for (const verb of triads) {
+			expect(verb.present).not.toBe('')
+			expect(verb.past).not.toBe('')
+			expect(verb.participle).not.toBe('')
+		}
+	})
+
+	it('acumula varios fallos en orden', () => {
+		const store = useGameStore()
+		store.startGame('target', 'easy')
+
+		fail(store)
+		fail(store)
+
+		expect(store.mistakes).toHaveLength(2)
+	})
+
+	/**
+	 * En Supervivencia `errors` es siempre 0 por especificación (`MECHANICS.md` §3: el
+	 * fallo termina la ronda, no se acumula), pero el fallo ocurrió — y es el más
+	 * valioso de explicar. Por eso el registro es independiente del contador.
+	 */
+	it('registra el fallo de Supervivencia aunque el contador siga en cero', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		fail(store)
+
+		expect(store.errors).toBe(0)
+		expect(store.status).toBe('lost')
+		expect(store.mistakes).toHaveLength(1)
+	})
+
+	it('una partida nueva no hereda los fallos de la anterior', () => {
+		const store = useGameStore()
+		store.startGame('target', 'easy')
+		fail(store)
+
+		store.startGame('target', 'easy')
+
+		expect(store.mistakes).toEqual([])
 	})
 })

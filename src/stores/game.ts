@@ -3,7 +3,8 @@ import {defineStore} from 'pinia'
 import {useBoard} from '@/composables/useBoard'
 import {useTimer} from '@/composables/useTimer'
 import {getLevelConfig} from '@/data/levels'
-import {getVerbsForDifficulty} from '@/data/verbs'
+import {VERBS, getVerbsForDifficulty} from '@/data/verbs'
+import {describeMistakes} from '@/lib/mistakes'
 import {calculatePace, isEligibleForRanking} from '@/lib/ranking'
 import type {
 	Cell,
@@ -14,6 +15,7 @@ import type {
 	SelectionOutcome,
 	SessionResult,
 } from '@/types/game'
+import {VERB_FORMS} from '@/types/verb'
 
 /**
  * Estado de la partida en curso.
@@ -43,17 +45,27 @@ export const useGameStore = defineStore('game', () => {
 	const mode = shallowRef<GameMode | null>(null)
 	const difficulty = shallowRef<Difficulty | null>(null)
 	const status = shallowRef<GameStatus>('idle')
-	/** Intentos fallidos. En Modo Precisión siempre es 0 (`MECHANICS.md` §3). */
+	/** Intentos fallidos. En Modo Supervivencia siempre es 0 (`MECHANICS.md` §3). */
 	const errors = shallowRef(0)
 	/** Marca ISO del final de la partida. `null` mientras no haya terminado. */
 	const completedAt = shallowRef<string | null>(null)
+
+	/**
+	 * Celdas de cada intento fallido, para poder explicarlos al terminar.
+	 *
+	 * Es independiente del contador `errors`, y tiene que serlo: en Modo Supervivencia
+	 * `errors` es siempre 0 por especificación (`MECHANICS.md` §3, el fallo es el
+	 * terminador de la ronda, no una penalización acumulable), pero el fallo
+	 * ocurrió y es justo el más valioso de explicar.
+	 */
+	const mistakeAttempts = shallowRef<Cell[][]>([])
 
 	const level = computed(() =>
 		difficulty.value === null ? null : getLevelConfig(difficulty.value),
 	)
 
 	/**
-	 * Sólo el Modo Objetivo tiene cuenta regresiva; el de Precisión cronometra
+	 * Sólo el Modo Objetivo tiene cuenta regresiva; el de Supervivencia cronometra
 	 * hacia adelante sin límite (`MECHANICS.md` §2 y §3). Es un `computed` porque
 	 * el reloj se crea aquí, antes de saber a qué modo va a jugar el usuario.
 	 */
@@ -109,7 +121,7 @@ export const useGameStore = defineStore('game', () => {
 	})
 
 	/**
-	 * Ritmo en verbos por minuto, la métrica de ranking del Modo Precisión
+	 * Ritmo en verbos por minuto, la métrica de ranking del Modo Supervivencia
 	 * (`MECHANICS.md` §3). Se calcula en vivo, así que también sirve para mostrarlo
 	 * en el HUD durante la partida.
 	 */
@@ -132,6 +144,7 @@ export const useGameStore = defineStore('game', () => {
 		status.value = 'idle'
 		errors.value = 0
 		completedAt.value = null
+		mistakeAttempts.value = []
 	}
 
 	/**
@@ -146,6 +159,7 @@ export const useGameStore = defineStore('game', () => {
 		timer.reset()
 		errors.value = 0
 		completedAt.value = null
+		mistakeAttempts.value = []
 		mode.value = nextMode
 		difficulty.value = nextDifficulty
 
@@ -313,11 +327,30 @@ export const useGameStore = defineStore('game', () => {
 	 * Consecuencias de un fallo, propias de cada modo.
 	 *
 	 * En **Objetivo** el error no termina la ronda, sólo consume tiempo y suma al
-	 * contador (`MECHANICS.md` §2). En **Precisión** el primer error termina la
+	 * contador (`MECHANICS.md` §2). En **Supervivencia** el primer error termina la
 	 * partida y **no se contabiliza**: §3 establece que toda partida registrada en
 	 * ese modo tiene cero errores, porque el fallo es el terminador de la ronda y
 	 * no una penalización acumulable.
 	 */
+	/** Guarda las celdas del intento fallido, resueltas desde el tablero. */
+	function recordMistake(cellIds: readonly string[]): void {
+		const cells = cellIds.flatMap((cellId) => {
+			for (const form of VERB_FORMS) {
+				const cell = board.columns.value[form].find((candidate) => candidate.id === cellId)
+				if (cell !== undefined) return [cell]
+			}
+
+			return []
+		})
+
+		if (cells.length === 0) return
+
+		mistakeAttempts.value = [...mistakeAttempts.value, cells]
+	}
+
+	/** Fallos de la partida, ya explicados. Vacío si no hubo ninguno. */
+	const mistakes = computed(() => describeMistakes(mistakeAttempts.value, VERBS))
+
 	function applyErrorRules(): void {
 		if (mode.value === 'precision') {
 			finish('lost')
@@ -336,7 +369,7 @@ export const useGameStore = defineStore('game', () => {
 	function checkWinCondition(): void {
 		/*
 		 * Vaciar el tablero gana sólo si **además se agotó el pool**. Es la victoria
-		 * del Modo Precisión, que no tiene objetivo de aciertos.
+		 * del Modo Supervivencia, que no tiene objetivo de aciertos.
 		 *
 		 * La condición del pool es imprescindible desde la reposición diferida: un
 		 * jugador rápido puede emparejar todas las tríadas visibles antes de que
@@ -365,7 +398,10 @@ export const useGameStore = defineStore('game', () => {
 
 		const outcome = board.select(cell)
 
-		if (outcome.type === 'mismatch') applyErrorRules()
+		if (outcome.type === 'mismatch') {
+			recordMistake(outcome.cellIds)
+			applyErrorRules()
+		}
 
 		if (outcome.type === 'match') {
 			scheduleRefill()
@@ -390,6 +426,8 @@ export const useGameStore = defineStore('game', () => {
 		status,
 		errors,
 		completedAt,
+		mistakeAttempts,
+		mistakes,
 		// Configuración derivada
 		level,
 		timeLimitMs,

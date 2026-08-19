@@ -2,10 +2,12 @@
 import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
+import GameModal from '@/components/GameModal.vue'
 import {useGameEngine} from '@/composables/useGameEngine'
 import {useRanking} from '@/composables/useRanking'
 import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
 import {formatDuration, formatPace} from '@/lib/format'
+import {FORM_LABELS} from '@/lib/practice'
 
 /**
  * Desenlace de la partida.
@@ -13,7 +15,7 @@ import {formatDuration, formatPace} from '@/lib/format'
  * Lee el resultado del motor, que sobrevive al desmontaje de `GameScreen`
  * precisamente para esto. Las métricas cambian por modo, porque cada uno se
  * clasifica por una cosa distinta (`MECHANICS.md` §2 y §3): en Contrarreloj
- * manda el tiempo, en Precisión el ritmo.
+ * manda el tiempo, en Supervivencia el ritmo.
  */
 const router = useRouter()
 const engine = useGameEngine()
@@ -35,7 +37,7 @@ const levelLabel = computed(() =>
 )
 
 const modeLabel = computed(() =>
-	result.value === null ? '' : result.value.mode === 'target' ? 'Contrarreloj' : 'Precisión',
+	result.value === null ? '' : result.value.mode === 'target' ? 'Contrarreloj' : 'Supervivencia',
 )
 
 /** Métricas destacadas, distintas por modo. */
@@ -60,7 +62,7 @@ const metrics = computed(() => {
 
 /**
  * Por qué esta partida no entra en el ranking, cuando no entra. Se explica el
- * motivo en lugar de callar: en Precisión el piso de aciertos es una regla que
+ * motivo en lugar de callar: en Supervivencia el piso de aciertos es una regla que
  * el jugador no puede deducir del tablero.
  */
 const rankingNote = computed(() => {
@@ -139,6 +141,22 @@ const recordNote = computed(() => {
 			return null
 	}
 })
+
+/**
+ * Fallos de la partida, para repasarlos.
+ *
+ * Un fallo sin explicación es una oportunidad de aprendizaje desperdiciada
+ * (`PRODUCT.md` §1 y §5). Se ofrecen sólo si los hubo: un botón que abre una
+ * lista vacía es peor que no tenerlo.
+ */
+const mistakes = computed(() => engine.mistakes.value)
+
+const isMistakesOpen = ref(false)
+
+/** «Ver mis 1 error» chirría; el singular necesita su propia frase. */
+const mistakesLabel = computed(() =>
+	mistakes.value.length === 1 ? 'Ver mi error' : `Ver mis ${mistakes.value.length} errores`,
+)
 
 /**
  * `true` cuando el jugador se marcha por su propio pie.
@@ -249,6 +267,53 @@ onBeforeUnmount(() => {
 			<ChoiceButton variant="secondary" @click="goToRanking">Clasificación</ChoiceButton>
 			<ChoiceButton variant="ghost" @click="goHome">Volver al menú</ChoiceButton>
 		</div>
+
+		<div v-if="mistakes.length > 0" class="result-actions">
+			<ChoiceButton variant="secondary" @click="isMistakesOpen = true">
+				{{ mistakesLabel }}
+			</ChoiceButton>
+		</div>
+
+		<!--
+			`focus-panel` porque es sobre todo texto: enfocar el botón del final
+			arrastraría el scroll y el modal se abriría por la mitad.
+		-->
+		<GameModal
+			:open="isMistakesOpen"
+			title="Tus errores"
+			dismissible
+			focus-panel
+			@close="isMistakesOpen = false"
+		>
+			<ol class="mistakes">
+				<li v-for="(mistake, index) in mistakes" :key="index" class="mistake">
+					<p class="mistake-label">Elegiste</p>
+					<p class="mistake-chosen">
+						<span v-for="choice in mistake.chosen" :key="choice.form" class="mistake-choice">
+							{{ choice.text }}
+							<span class="mistake-form">{{ FORM_LABELS[choice.form] }}</span>
+						</span>
+					</p>
+
+					<!--
+						Se muestran las tríadas de TODOS los verbos que tocó, no una sola:
+						al fallar se eligen celdas de hasta tres verbos distintos, así que
+						no existe «la» correcta. Ver las tres revela dónde estaba la
+						confusión.
+					-->
+					<p class="mistake-label">
+						{{ mistake.triads.length === 1 ? 'Sus formas son' : 'Sus formas correctas son' }}
+					</p>
+					<p v-for="verb in mistake.triads" :key="verb.id" class="mistake-triad">
+						{{ verb.present }} · {{ verb.past }} · {{ verb.participle }}
+					</p>
+				</li>
+			</ol>
+
+			<template #actions>
+				<ChoiceButton variant="primary" @click="isMistakesOpen = false">Cerrar</ChoiceButton>
+			</template>
+		</GameModal>
 	</section>
 
 	<!--
@@ -351,6 +416,48 @@ onBeforeUnmount(() => {
 	font-size: var(--text-caption);
 	margin: 0;
 	opacity: 0.7;
+}
+
+.mistakes {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-gutter);
+	margin: 0;
+	padding: 0;
+	list-style: none;
+	text-align: left;
+}
+
+.mistake-label {
+	font-family: var(--font-display);
+	font-size: var(--text-caption);
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	opacity: 0.7;
+}
+
+.mistake-chosen {
+	display: flex;
+	flex-wrap: wrap;
+	gap: calc(var(--spacing-gutter) / 3);
+	margin: 4px 0 calc(var(--spacing-gutter) / 2);
+}
+
+.mistake-choice {
+	padding: 2px 6px;
+	border: 3px solid var(--color-ink);
+	/* Rosa: el mismo color con el que se marca el fallo en el tablero. */
+	background-color: var(--color-pink);
+	font-size: var(--text-caption);
+}
+
+.mistake-form {
+	opacity: 0.75;
+}
+
+.mistake-triad {
+	margin-top: 4px;
+	font-size: var(--text-body-md);
 }
 
 .result-record {
