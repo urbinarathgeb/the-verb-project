@@ -1,7 +1,7 @@
 import {computed, ref} from 'vue'
 import {defineStore} from 'pinia'
-import {MASTERY_MIN_ACCURACY, MASTERY_MIN_CORRECT} from '@/data/levels'
-import {supabase} from '@/lib/supabase'
+import {accuracyOf, emptyProgress, isMastered, type VerbProgress} from '@/lib/progress'
+import {getSupabase} from '@/lib/supabase'
 import {useAuthStore} from '@/stores/auth'
 
 /**
@@ -19,14 +19,6 @@ import {useAuthStore} from '@/stores/auth'
  * aprendido en el otro.
  */
 
-export interface VerbProgress {
-	readonly verbId: number
-	readonly correct: number
-	readonly wrong: number
-	/** Marca ISO de la última respuesta sobre este verbo. */
-	readonly lastPracticedAt: string
-}
-
 /** Incrementos aún no enviados al servidor, por verbo. */
 export interface PendingDelta {
 	readonly hits: number
@@ -38,11 +30,6 @@ export interface PendingDelta {
  * que no había nada que enviar o que no hay a quién atribuirlo.
  */
 export type SyncOutcome = 'saved' | 'empty' | 'guest' | 'offline' | 'error'
-
-/** Un verbo sin practicar todavía. */
-function emptyProgress(verbId: number): VerbProgress {
-	return {verbId, correct: 0, wrong: 0, lastPracticedAt: ''}
-}
 
 /** Suma dos colas de incrementos, verbo a verbo. */
 function mergeDeltas(
@@ -61,23 +48,7 @@ function mergeDeltas(
 	return merged
 }
 
-/** Porcentaje de aciertos de un verbo, de 0 a 1. Sin respuestas, 0. */
-export function accuracyOf(progress: VerbProgress): number {
-	const total = progress.correct + progress.wrong
-
-	return total === 0 ? 0 : progress.correct / total
-}
-
-/**
- * Un verbo se considera dominado con suficientes aciertos **y** buen porcentaje.
- *
- * Las dos condiciones son necesarias: con tres opciones se acierta al azar una
- * de cada tres veces, así que sólo el porcentaje sería frágil; y sólo el número
- * de aciertos premiaría insistir hasta acertar.
- */
-export function isMastered(progress: VerbProgress): boolean {
-	return progress.correct >= MASTERY_MIN_CORRECT && accuracyOf(progress) >= MASTERY_MIN_ACCURACY
-}
+export {accuracyOf, isMastered, type VerbProgress}
 
 export const useProgressStore = defineStore('progress', () => {
 	/**
@@ -159,7 +130,8 @@ export const useProgressStore = defineStore('progress', () => {
 	 * volver ni se envíen dos veces.
 	 */
 	async function syncPending(): Promise<SyncOutcome> {
-		if (supabase === null) return 'offline'
+		const client = await getSupabase()
+		if (client === null) return 'offline'
 
 		const userId = useAuthStore().userId
 		if (userId === null) return 'guest'
@@ -176,7 +148,7 @@ export const useProgressStore = defineStore('progress', () => {
 		pending.value = {}
 		isSyncing.value = true
 
-		const {error} = await supabase.rpc('record_practice_progress', {entries: batch})
+		const {error} = await client.rpc('record_practice_progress', {entries: batch})
 
 		isSyncing.value = false
 
@@ -202,12 +174,13 @@ export const useProgressStore = defineStore('progress', () => {
 	 * subirlo falsearía sus estadísticas.
 	 */
 	async function loadProgress(): Promise<void> {
-		if (supabase === null) return
+		const client = await getSupabase()
+		if (client === null) return
 
 		const userId = useAuthStore().userId
 		if (userId === null) return
 
-		const {data, error} = await supabase
+		const {data, error} = await client
 			.from('user_progress')
 			.select('verb_id, hits, misses, last_practiced_at')
 

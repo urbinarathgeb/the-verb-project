@@ -50,6 +50,12 @@ const routes: RouteRecordRaw[] = [
 		component: () => import('@/screens/RankingScreen.vue'),
 	},
 	{
+		// Progreso del Dojo. Sin parámetros: es de la persona, no de un nivel.
+		path: '/progress',
+		name: 'progress',
+		component: () => import('@/screens/ProgressScreen.vue'),
+	},
+	{
 		// Destino del redirect de Supabase Auth (T5.3).
 		path: '/auth/callback',
 		name: 'auth-callback',
