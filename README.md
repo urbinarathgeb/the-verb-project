@@ -4,7 +4,7 @@ Juego web para aprender y practicar las formas de los verbos irregulares en ingl
 
 En lugar de estudiar una tabla de gramática, se juega. El tablero muestra tres columnas desordenadas —una por forma verbal— y hay que emparejar las tres formas de cada verbo contra el reloj.
 
-> **Estado:** prototipo en desarrollo. Los dos modos contrarreloj ya son jugables en modo invitado. El modo Práctica, el login y el ranking están pendientes (ver `PLAN.md`).
+> **Estado:** prototipo en desarrollo. Los tres modos son jugables, con o sin cuenta, y el login con Google, la clasificación y el progreso persistente ya funcionan. Pendiente: ajustes de jugabilidad y cierre (ver `PLAN.md`).
 
 ## Cómo se juega
 
@@ -12,10 +12,14 @@ El tablero muestra **N verbos** en sus tres formas, repartidos en tres columnas.
 
 Se selecciona **una celda por columna**, en cualquier orden. Al completar las tres:
 
-- **Acierto:** la tríada sale del tablero y entra una nueva en su lugar, mientras queden verbos en el pool del nivel.
+- **Acierto:** las tres celdas se atenúan y quedan como huecos. Unos segundos después entra una tríada nueva, mientras queden verbos en el pool del nivel.
 - **Fallo:** las tres celdas se deseleccionan y se marcan brevemente en rosa.
 
 Pulsar otra celda de una columna que ya tenía selección la reemplaza; pulsar la celda ya seleccionada la deselecciona.
+
+La reposición **tarda unos segundos a propósito**: durante esa espera puedes seguir acertando y el tablero se va vaciando, así que encadenar aciertos se nota. Y las tríadas nuevas ocupan sólo huecos: **ninguna celda que ya estuviera en el tablero se mueve de sitio**.
+
+Además espera a que haya al menos tres huecos antes de reponer. Con uno solo, la tríada nueva caería justo donde estaba la que acabas de resolver, y eso te la regalaría. Si encadenas tantos aciertos que el tablero se queda casi desierto, la reposición se adelanta sola.
 
 ## Accesibilidad
 
@@ -50,9 +54,9 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 ## Pantallas disponibles
 
 - `/` — menú: elegir modo y nivel.
-- `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos.
+- `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos y modal de desenlace al terminar.
 - `/practice/:difficulty` — modo Práctica, sin reloj.
-- `/result` — desenlace con las métricas del modo jugado.
+- `/result` — desenlace con las métricas del modo jugado. Si bates tu marca, la posición en la clasificación; si no, tu mejor marca en ese nivel.
 - `/ranking` — clasificación por modo y nivel.
 - `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige al menú.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
@@ -60,6 +64,8 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 ## Clasificación
 
 Es pública: se puede consultar sin cuenta. Hay **seis tablas** —dos modos por tres niveles— porque comparar un tiempo de nivel fácil con uno de difícil no significaría nada: cambian el tamaño del tablero y el objetivo.
+
+Al terminar una partida, el desenlace se anuncia **sobre el propio tablero**, que queda congelado para que se vea qué faltaba. Desde ahí se pasa al resultado, que con sesión iniciada muestra en qué puesto has quedado y avisa si has batido tu marca en ese modo y nivel.
 
 Cada tabla muestra el **mejor resultado de cada jugador**, no todas sus partidas, para que quien más juegue no copie la tabla con sus propios intentos. «Mejor» significa cosas distintas por modo: en Contrarreloj el menor tiempo, en Precisión el mayor ritmo en verbos por minuto. Los empates comparten posición.
 

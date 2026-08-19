@@ -10,8 +10,12 @@
     - **Correcto:** las 3 celdas se marcan como resueltas (ej. bloqueadas/atenuadas), se retiran del pool de "pendientes", y se registra un acierto.
     - **Incorrecto:** las 3 celdas se deseleccionan, se muestra feedback breve de error, y se registra un error/intento fallido.
 - Seleccionar una nueva celda dentro de una columna que ya tiene una celda seleccionada **reemplaza** la selección anterior en esa columna (no permite 2 seleccionadas a la vez en la misma columna).
-- **Reposición dinámica:** el tablero mantiene **siempre N tríadas visibles**. Al resolver una tríada, si aún quedan verbos sin usar en el pool del nivel, entra una tríada nueva ocupando las 3 celdas liberadas, con posición barajada dentro de cada columna. Cuando el pool se agota, los huecos quedan vacíos y el tablero se reduce hasta resolverse por completo. Esta regla unifica el Modo Objetivo y el Modo Precisión bajo una sola mecánica y elimina el tiempo muerto de regenerar tableros enteros (ver `PLAN.md`, Bitácora de Decisiones, P1).
-- **Posición de la tríada repuesta:** la tríada entrante nunca ocupa la misma fila en dos columnas. Como el jugador acaba de ver cambiar esas tres celdas, dos de ellas alineadas le revelarían gratis que pertenecen al mismo verbo. Cada celda nueva entra en una fila elegida al azar, distinta de las otras dos, y la celda que estuviera ahí baja al hueco liberado: se mueve una sola celda extra por columna, así que el jugador no pierde el mapa mental del tablero (ver `PLAN.md`, Bitácora de Decisiones, P4).
+- **Reposición diferida:** al resolver una tríada, sus celdas **no se retiran**: se quedan en su sitio atenuadas y no pulsables, como huecos. Pasado `refillDelayMs`, si quedan verbos en el pool, entra una tríada nueva ocupando huecos disponibles. El retardo es la mecánica, no un adorno: durante esa espera el jugador puede seguir acertando y el tablero se va **vaciando visiblemente**, lo que premia las rachas. En consecuencia, el tablero ya **no** mantiene siempre N tríadas jugables (ver `PLAN.md`, Bitácora de Decisiones, P1 y D8).
+- **La reposición espera a que haya huecos suficientes.** Con un solo hueco, las tres filas libres son exactamente las que dejó la tríada resuelta, así que la entrante caería siempre ahí: el jugador acaba de verlas atenuarse juntas y sabría al instante que las tres nuevas son un mismo verbo. Se midió y ocurría en **200 de 200** casos. Por eso, aunque venza el retardo, la reposición **queda en deuda** hasta que el tablero llega a `refillMinVacancies` huecos. Pero el mínimo es una **preferencia, no una condición absoluta**: pasado `refillGraceMs` se repone igual. Tiene que ser así, porque cada acierto genera una reposición y el tablero deja de pagarlas al bajar del mínimo — un mínimo de G huecos absoluto dejaría el tablero fijo en N−(G−1) para el resto de la partida.
+- **Y se adelanta si el tablero se vacía demasiado.** Al alcanzar `refillForceVacancies` huecos se adelanta la reposición más antigua sin esperar su retardo. Las restantes **conservan su hora**: reprogramarlas haría que forzar una vez retrasara a todas las siguientes y el tablero se llenaría a tirones.
+- **Ninguna celda ocupada se mueve.** La tríada entrante sólo ocupa huecos; el jugador nunca pierde de vista una celda que acababa de localizar. Es posible gracias al retardo: al acumularse huecos hay filas libres de sobra donde colocarla.
+- **Ningún verbo comparte fila entre dos columnas.** Es un invariante de todo el tablero, garantizado desde el reparto inicial y heredado por las reposiciones. El motivo: si una tríada entrante quedara alineada en dos columnas, el jugador —que acaba de verla aparecer— sabría gratis que esas celdas son del mismo verbo. Con el reparto barajado libremente, el 45 % de los verbos nacía alineado y arrastraba el problema a las reposiciones. La elección de filas además mira una reposición por delante, para no dejar a la siguiente sin combinación válida. Con el mínimo de huecos en vigor, la garantía se cumple: sobre unas dos mil reposiciones simuladas no hubo **ninguna** alineación ni ninguna repetición de las tres casillas de la misma tríada (ver `PLAN.md`, Bitácora de Decisiones, P4 y D8).
+- **Pool agotado:** no hay nada que reponer y las celdas resueltas se quedan atenuadas. El tablero se vacía a medida que se aciertan las que quedan; la partida se gana cuando no queda ninguna jugable **y** el pool está agotado.
 - **Deselección:** pulsar la celda ya seleccionada de una columna retira esa selección. Es la contraparte del reemplazo dentro de columna y lo esperable en pantalla táctil (ver `PLAN.md`, Bitácora de Decisiones, P4).
 - **Validación por identidad, no por texto:** la comprobación de una tríada compara el `id` del verbo de cada celda, nunca las cadenas mostradas. Esto evita ambigüedades si en el futuro dos verbos comparten una misma forma.
 
@@ -68,15 +72,18 @@ _(sujeto a refinamiento cuando se diseñe el schema real en `PLAN.md`)_
 
 Todos estos valores viven centralizados en `src/data/levels.ts` como constante tipada, para que ajustarlos tras jugar el prototipo sea un cambio de una línea. Valores iniciales:
 
-| Nivel     | Pool de verbos                        | N (tríadas visibles) | Objetivo: X | Objetivo: T | Penalización por error |
-| --------- | ------------------------------------- | -------------------- | ----------- | ----------- | ---------------------- |
-| `easy`   | `beginner` (49)                       | 6                    | 8           | 90 s        | −2 s                   |
-| `medium`   | `beginner` + `intermediate` (86)      | 8                    | 10          | 90 s        | −2 s                   |
-| `hard` | pool completo (106)                   | 10                   | 12          | 100 s       | −3 s                   |
+| Nivel     | Pool de verbos                        | N | Objetivo: X | Objetivo: T | Penalización | Retardo | Huecos mín. | Fuerza con |
+| --------- | ------------------------------------- | - | ----------- | ----------- | ------------ | ------- | ----------- | ---------- |
+| `easy`   | `beginner` (49)                       | 6 | 8           | 90 s        | −2 s         | 5 s     | 3           | 5          |
+| `medium`   | `beginner` + `intermediate` (86)      | 8 | 10          | 90 s        | −2 s         | 5 s     | 3           | 7          |
+| `hard` | pool completo (106)                   | 10 | 12          | 100 s       | −3 s         | 5 s     | 3           | 9          |
 
 - **Modo Precisión:** usa la misma `N` por nivel; el pool es el nivel completo.
 - **Piso mínimo de aciertos para clasificar** en el ranking de Precisión: `MIN_MATCHES_FOR_RANKING = 5`.
 - `N` escalonada por nivel resuelve además la usabilidad táctil: 18 celdas caben en un viewport móvil sin scroll; 30 no.
+- **Huecos mínimos = 3.** Cuantos más se exijan, más margen hay para colocar la tríada entrante sin repetir posición; a cambio, la primera reposición tarda más en llegar y el tablero arranca encogiéndose.
+- **Se fuerza con N−1 huecos**, es decir cuando queda una sola tríada jugable.
+- **`refillDelayMs` está sin ajustar.** Un tablero que se vacía durante una racha tiene menos distractores, así que la reposición diferida hace ambos modos más fáciles: `X`, `T` y `N` probablemente necesiten reajuste tras jugar.
 
 Estos son parámetros de balance: se espera que cambien al jugar el prototipo y **no bloquean ni condicionan la arquitectura**.
 
