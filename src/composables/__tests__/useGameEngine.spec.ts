@@ -2,7 +2,7 @@ import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {createPinia, setActivePinia} from 'pinia'
 import {isRef} from 'vue'
 import {useGameEngine} from '../useGameEngine'
-import {useGameStore} from '@/stores/game'
+import {REFILL_APPEAR_MS, useGameStore} from '@/stores/game'
 import {getLevelConfig} from '@/data/levels'
 import {VERB_FORMS, type VerbForm} from '@/types/verb'
 import type {Cell} from '@/types/game'
@@ -198,11 +198,15 @@ describe('useGameEngine — partida completa', () => {
 		engine.startGame('target', 'easy')
 		vi.advanceTimersByTime(20 * SECOND)
 
+		// Se juega como un jugador rápido: se encadena mientras haya tríadas y sólo
+		// se espera reposición cuando el tablero se agota. Esperar entre cada acierto
+		// consumiría el límite de tiempo y la partida se perdería por reloj.
 		for (let done = 0; done < targetVerbs; done++) {
+			if (visibleVerbIds(engine).length === 0) {
+				vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs + REFILL_APPEAR_MS)
+			}
+
 			solve(engine, visibleVerbIds(engine)[0] ?? 0)
-			// Sin esperar la reposición el tablero se agota a las seis tríadas y nunca
-			// se alcanzaría el objetivo de ocho.
-			vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs)
 		}
 
 		expect(engine.status.value).toBe('won')
@@ -212,7 +216,7 @@ describe('useGameEngine — partida completa', () => {
 		expect(engine.isRankingEligible.value).toBe(true)
 	})
 
-	it('juega un Modo Precisión hasta el primer fallo', () => {
+	it('juega un Modo Supervivencia hasta el primer fallo', () => {
 		const engine = useGameEngine()
 		engine.startGame('precision', 'easy')
 		for (let done = 0; done < 6; done++) {

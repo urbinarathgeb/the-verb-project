@@ -82,7 +82,7 @@ export const LEVELS = Object.freeze({
 		boardSize: 6,
 		refillMinVacancies: 3,
 		refillForceVacancies: 5,
-		targetVerbs: 8,
+		targetVerbs: 16,
 		timeLimitMs: 90 * SECOND,
 		refillDelayMs: 5 * SECOND,
 		refillGraceMs: 5 * SECOND,
@@ -95,7 +95,7 @@ export const LEVELS = Object.freeze({
 		boardSize: 8,
 		refillMinVacancies: 3,
 		refillForceVacancies: 7,
-		targetVerbs: 10,
+		targetVerbs: 20,
 		timeLimitMs: 90 * SECOND,
 		refillDelayMs: 5 * SECOND,
 		refillGraceMs: 5 * SECOND,
@@ -108,7 +108,7 @@ export const LEVELS = Object.freeze({
 		boardSize: 10,
 		refillMinVacancies: 3,
 		refillForceVacancies: 9,
-		targetVerbs: 12,
+		targetVerbs: 24,
 		timeLimitMs: 100 * SECOND,
 		refillDelayMs: 5 * SECOND,
 		refillGraceMs: 5 * SECOND,
@@ -117,7 +117,7 @@ export const LEVELS = Object.freeze({
 }) satisfies Readonly<Record<Difficulty, LevelConfig>>
 
 /**
- * Piso mínimo de aciertos para clasificar en el ranking del Modo Precisión
+ * Piso mínimo de aciertos para clasificar en el ranking del Modo Supervivencia
  * (`MECHANICS.md` §3).
  *
  * Sin este piso, el ritmo `(aciertos / tiempo) * 60` premiaría sesiones
@@ -128,7 +128,7 @@ export const MIN_MATCHES_FOR_RANKING = 5
 
 /**
  * Cuántos aciertos necesita un verbo para considerarse dominado en el Modo
- * Práctica, y con qué porcentaje mínimo.
+ * Dojo, y con qué porcentaje mínimo.
  *
  * Un solo acierto puede ser suerte —hay tres opciones, así que acertar al azar
  * ocurre una de cada tres veces—, y sin exigir porcentaje bastaría con insistir

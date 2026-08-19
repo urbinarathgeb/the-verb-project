@@ -31,7 +31,7 @@ describe('configuración de niveles', () => {
 	/**
 	 * La penalización por error no puede superar al tiempo límite: un solo fallo
 	 * terminaría la partida de golpe, convirtiendo el Modo Objetivo en el Modo
-	 * Precisión y contradiciendo `MECHANICS.md` §2 ("los errores no terminan la
+	 * Supervivencia y contradiciendo `MECHANICS.md` §2 ("los errores no terminan la
 	 * ronda").
 	 */
 	it.each(DIFFICULTIES)('la penalización de "%s" no agota el tiempo límite', (difficulty) => {

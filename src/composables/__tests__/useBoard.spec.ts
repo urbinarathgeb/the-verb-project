@@ -442,7 +442,7 @@ describe('useBoard — reposición de tríadas', () => {
 
 		/**
 		 * El recorrido completo del nivel: se agota el pool reponiendo y después el
-		 * tablero se vacía. Es el camino de la victoria en Modo Precisión.
+		 * tablero se vacía. Es el camino de la victoria en Modo Supervivencia.
 		 */
 		it('agota el pool reponiendo y luego vacía el tablero', () => {
 			const play = playable(10, 6)
