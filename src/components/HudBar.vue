@@ -112,7 +112,7 @@ const clockLabel = computed(() => {
 	 * versales, no el texto. El bloque de escritorio de abajo restaura el tamaño
 	 * del sistema en cuanto hay ancho para él.
 	 */
-	font-size: 0.625rem;
+	font-size: var(--text-micro);
 	letter-spacing: 0;
 	text-transform: uppercase;
 	/*

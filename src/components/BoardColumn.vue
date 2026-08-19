@@ -53,7 +53,7 @@ const ACCENT_CLASSES = {
 	 * sobra es el tracking en versales, no el texto; el bloque de escritorio de
 	 * abajo restaura ambos en cuanto hay ancho.
 	 */
-	font-size: 0.625rem;
+	font-size: var(--text-micro);
 	letter-spacing: 0;
 	white-space: nowrap;
 }

@@ -267,7 +267,7 @@ onMounted(() => {
 
 .progress-counts {
 	display: block;
-	font-size: 0.625rem;
+	font-size: var(--text-micro);
 	opacity: 0.7;
 }
 

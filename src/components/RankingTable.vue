@@ -164,7 +164,7 @@ function markAvatarFailed(entry: RankingEntry): void {
 	text-transform: uppercase;
 	/* Compacto en móvil, como las etiquetas del HUD; el bloque de escritorio de
 	   abajo restaura el tamaño del sistema en cuanto hay ancho. */
-	font-size: 0.625rem;
+	font-size: var(--text-micro);
 	letter-spacing: 0;
 	background-color: var(--color-cyan);
 	border-bottom: 3px solid var(--color-ink);
@@ -236,6 +236,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 	background-color: var(--color-card);
 	font-family: var(--font-display);
 	text-transform: uppercase;
-	font-size: 0.625rem;
+	font-size: var(--text-micro);
 }
 </style>

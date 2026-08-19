@@ -70,6 +70,16 @@
 	--text-caption--line-height: 1.4;
 	--text-caption--font-weight: 500;
 
+	/*
+	 * Anotación al margen: el significado bajo la forma verbal, los contadores de
+	 * la tabla de progreso, las cabeceras del tablero en móvil. Se promueve a
+	 * token porque este valor ya estaba escrito a mano en tres sitios, que es lo
+	 * que §10 pide evitar.
+	 */
+	--text-micro: 0.625rem; /* 10px */
+	--text-micro--line-height: 1;
+	--text-micro--font-weight: 400;
+
 	/* ---------------------------------------------------------------------
 	 * Sombras duras
 	 *
