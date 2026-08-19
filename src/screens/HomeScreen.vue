@@ -241,11 +241,31 @@ function goToProgress(): void {
 	min-height: 0;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing-gutter);
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 	/* El menú puede desbordar en pantallas muy bajas; el tablero nunca. */
 	overflow-y: auto;
+}
+
+/*
+ * Centrado que no se come el contenido.
+ *
+ * `justify-content: center` sobre un contenedor que además desplaza reparte el
+ * desbordamiento arriba y abajo, pero `scrollTop` no puede ser negativo: la
+ * mitad superior queda inalcanzable para siempre. Los márgenes automáticos
+ * centran igual cuando el contenido cabe, y cuando no cabe lo anclan arriba,
+ * que es lo que hace que se pueda llegar a todo.
+ *
+ * `justify-content: safe center` dice esto mismo en una línea, pero su soporte
+ * en el Safari de iOS es irregular y el móvil es justo el caso a resolver.
+ */
+.home > :first-child {
+	margin-block-start: auto;
+}
+
+.home > :last-child {
+	margin-block-end: auto;
 }
 
 .home-title {
@@ -344,6 +364,12 @@ function goToProgress(): void {
 	gap: calc(var(--spacing-gutter) / 3);
 	width: 100%;
 	max-width: 32rem;
+	/*
+	 * No se encoge: como hijo de un contenedor flex en columna, el reparto de
+	 * espacio lo comprimía por debajo de su contenido y la última línea del aviso
+	 * quedaba fuera de la caja, sin contar para el scroll de la pantalla.
+	 */
+	flex-shrink: 0;
 	/* Alto del contenido resuelto, para que aparecer no desplace el menú. */
 	min-height: calc(var(--spacing-touch) + 5em);
 }
@@ -352,6 +378,13 @@ function goToProgress(): void {
 	display: flex;
 	align-items: center;
 	gap: calc(var(--spacing-gutter) / 2);
+	/*
+	 * En móvil el texto compite con un botón que no se encoge, y el recorte
+	 * pensado para nombres largos de Google acababa mutilando también la cadena
+	 * fija «Juegas como invitado» («Juegas como i…»), que es lo que ve todo el
+	 * que no ha iniciado sesión. Envolver deja el botón en su propia línea.
+	 */
+	flex-wrap: wrap;
 }
 
 .home-avatar {
@@ -362,7 +395,11 @@ function goToProgress(): void {
 }
 
 .home-account-name {
-	flex: 1;
+	/*
+	 * `flex-basis` mínima suficiente para el nombre: por debajo de eso el botón
+	 * se va a la línea siguiente en lugar de exprimir el texto hasta el elipsis.
+	 */
+	flex: 1 1 12rem;
 	min-width: 0;
 	font-size: var(--text-caption);
 	/* Los nombres de Google pueden ser largos; recortar antes que romper la fila. */
@@ -378,20 +415,13 @@ function goToProgress(): void {
 .home-account-error {
 	padding: calc(var(--spacing-gutter) / 3);
 	border: 3px solid var(--color-ink);
-	/*
-	 * En móvil el texto compite con un botón que no se encoge, y el recorte
-	 * pensado para nombres largos de Google acababa mutilando también la cadena
-	 * fija «Juegas como invitado» («Juegas como i…»), que es lo que ve todo el
-	 * que no ha iniciado sesión. Envolver deja el botón en su propia línea.
-	 */
-	flex-wrap: wrap;
 	background-color: var(--color-pink);
 	font-size: var(--text-caption);
 }
 
 @media (width >= 40rem) {
 	.home {
-		padding: var(--spacing-margin-desktop);
+		padding: var(--spacing-screen-desktop);
 		gap: calc(var(--spacing-gutter) * 1.5);
 	}
 

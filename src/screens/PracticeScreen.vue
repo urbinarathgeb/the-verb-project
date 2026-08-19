@@ -214,7 +214,7 @@ onBeforeUnmount(() => {
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing-gutter);
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 	overflow-y: auto;
 }
 
@@ -365,7 +365,7 @@ onBeforeUnmount(() => {
 
 @media (width >= 40rem) {
 	.practice {
-		padding: var(--spacing-margin-desktop);
+		padding: var(--spacing-screen-desktop);
 	}
 
 	.practice-word {

@@ -343,7 +343,7 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	flex-direction: column;
 	gap: calc(var(--spacing-gutter) / 2);
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 	/* La pantalla ocupa el viewport y no hace scroll: el tablero se adapta. */
 	overflow: hidden;
 }
@@ -400,7 +400,7 @@ onBeforeUnmount(() => {
 
 @media (width >= 40rem) {
 	.game {
-		padding: var(--spacing-margin-desktop);
+		padding: var(--spacing-screen-desktop);
 		gap: var(--spacing-gutter);
 	}
 }

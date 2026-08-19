@@ -101,6 +101,32 @@
 	--radius-4xl: 0;
 }
 
+/*
+ * Márgenes de pantalla que respetan las zonas seguras del dispositivo.
+ *
+ * `index.html` declara `viewport-fit=cover` porque la app es instalable y ocupa
+ * la pantalla entera: en un iPhone con isla dinámica eso significa pintar por
+ * debajo del hardware. Sin estos rellenos, el aspa de salir queda bajo la isla
+ * y la última fila del tablero bajo el indicador de inicio.
+ *
+ * `max()` mantiene el margen de diseño en los lados donde no hay inset que
+ * respetar, que es el caso de cualquier navegador de escritorio.
+ *
+ * Van fuera de `@theme` a propósito: son un atajo de escritura para la regla
+ * `padding` de las pantallas, no un token del sistema del que deban generarse
+ * utilidades.
+ */
+:root {
+	--spacing-screen-mobile: max(var(--spacing-margin-mobile), env(safe-area-inset-top))
+		max(var(--spacing-margin-mobile), env(safe-area-inset-right))
+		max(var(--spacing-margin-mobile), env(safe-area-inset-bottom))
+		max(var(--spacing-margin-mobile), env(safe-area-inset-left));
+	--spacing-screen-desktop: max(var(--spacing-margin-desktop), env(safe-area-inset-top))
+		max(var(--spacing-margin-desktop), env(safe-area-inset-right))
+		max(var(--spacing-margin-desktop), env(safe-area-inset-bottom))
+		max(var(--spacing-margin-desktop), env(safe-area-inset-left));
+}
+
 @layer base {
 	html {
 		/* Evita el rebote elástico: la app ocupa el viewport y no hace scroll. */

@@ -119,7 +119,7 @@ function goHome(): void {
 	flex-direction: column;
 	align-items: center;
 	gap: var(--spacing-gutter);
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 	overflow-y: auto;
 }
 
@@ -205,7 +205,7 @@ function goHome(): void {
 
 @media (width >= 40rem) {
 	.ranking {
-		padding: var(--spacing-margin-desktop);
+		padding: var(--spacing-screen-desktop);
 	}
 
 	.ranking-heading {

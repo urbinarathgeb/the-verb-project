@@ -341,10 +341,30 @@ onBeforeUnmount(() => {
 	min-height: 0;
 	flex-direction: column;
 	align-items: center;
-	justify-content: center;
+	justify-content: flex-start;
 	gap: var(--spacing-gutter);
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 	overflow-y: auto;
+}
+
+/*
+ * Centrado que no se come el contenido.
+ *
+ * `justify-content: center` sobre un contenedor que además desplaza reparte el
+ * desbordamiento arriba y abajo, pero `scrollTop` no puede ser negativo: la
+ * mitad superior queda inalcanzable para siempre. Los márgenes automáticos
+ * centran igual cuando el contenido cabe, y cuando no cabe lo anclan arriba,
+ * que es lo que hace que se pueda llegar a todo.
+ *
+ * `justify-content: safe center` dice esto mismo en una línea, pero su soporte
+ * en el Safari de iOS es irregular y el móvil es justo el caso a resolver.
+ */
+.result > :first-child {
+	margin-block-start: auto;
+}
+
+.result > :last-child {
+	margin-block-end: auto;
 }
 
 .result-header {
@@ -495,7 +515,7 @@ onBeforeUnmount(() => {
 
 @media (width >= 40rem) {
 	.result {
-		padding: var(--spacing-margin-desktop);
+		padding: var(--spacing-screen-desktop);
 	}
 
 	.result-title {

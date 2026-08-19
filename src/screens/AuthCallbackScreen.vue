@@ -73,7 +73,7 @@ function goHome(): void {
 	min-height: 0;
 	align-items: center;
 	justify-content: center;
-	padding: var(--spacing-margin-mobile);
+	padding: var(--spacing-screen-mobile);
 }
 
 .callback-card {
