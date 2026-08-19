@@ -12,7 +12,7 @@ import type {GameMode} from '@/types/game'
  */
 const props = defineProps<{
 	mode: GameMode
-	/** Tiempo consumido. En Modo Precisión es lo que se muestra. */
+	/** Tiempo consumido. En Modo Supervivencia es lo que se muestra. */
 	elapsedMs: number
 	/** Tiempo restante, o `null` si el reloj no tiene límite. */
 	remainingMs: number | null
@@ -20,7 +20,7 @@ const props = defineProps<{
 	errors: number
 	/** Aciertos que faltan para el objetivo, o `null` fuera del Modo Objetivo. */
 	remainingTargets: number | null
-	/** Ritmo en verbos por minuto (Modo Precisión). */
+	/** Ritmo en verbos por minuto (Modo Supervivencia). */
 	pace: number
 }>()
 
@@ -72,7 +72,7 @@ const clockLabel = computed(() => {
 			<span class="hud-value">{{ errors }}</span>
 		</p>
 
-		<!-- En Precisión el ritmo sustituye a los errores: no hay errores que contar. -->
+		<!-- En Supervivencia el ritmo sustituye a los errores: no hay errores que contar. -->
 		<p v-else class="hud-slot">
 			<span class="hud-label">Ritmo</span>
 			<span class="hud-value">{{ formatPace(pace) }}</span>

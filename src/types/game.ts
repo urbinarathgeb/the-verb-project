@@ -11,10 +11,25 @@
 
 import type {Verb, VerbForm} from './verb'
 
-/** Modos con ranking. El modo Práctica no usa el tablero (`MECHANICS.md` §4). */
+/** Modos con ranking. El Dojo no usa el tablero (`MECHANICS.md` §4). */
 export const GAME_MODES = ['target', 'precision'] as const
 
 export type GameMode = (typeof GAME_MODES)[number]
+
+/** El Dojo: entrenamiento sin reloj ni clasificación. */
+export const PRACTICE_MODE = 'practice'
+
+/**
+ * Lo que el jugador elige en el menú: los dos modos competitivos más el Dojo.
+ *
+ * El Dojo **no** es un `GameMode`, y la distinción no es cosmética: ese tipo
+ * alimenta la columna `mode` de `game_sessions`, su `check` en la base y las dos
+ * vistas de ranking. Meterlo ahí obligaría a relajar el schema para representar
+ * un modo que nunca se guarda. Aquí conviven sólo de cara al menú.
+ */
+export const MENU_MODES = [...GAME_MODES, PRACTICE_MODE] as const
+
+export type MenuMode = (typeof MENU_MODES)[number]
 
 /**
  * Valida un modo llegado de la URL. Los parámetros de ruta son texto libre: sin
@@ -88,7 +103,7 @@ export interface BoardState {
  *
  * El tablero no sabe de puntaje, tiempo ni fin de ronda: devuelve lo que pasó y
  * el motor de juego (Fase 2) decide las consecuencias, que son distintas en cada
- * modo — en Objetivo un fallo sólo penaliza tiempo, en Precisión termina la
+ * modo — en Objetivo un fallo sólo penaliza tiempo, en Supervivencia termina la
  * partida (`MECHANICS.md` §2 y §3).
  */
 export type SelectionOutcome =
@@ -118,7 +133,7 @@ export type FinishedStatus = Extract<GameStatus, 'won' | 'lost'>
  * Resultado de una partida terminada.
  *
  * Es la forma que se muestra en pantalla y, para usuarios autenticados, la que
- * se persiste en `game_sessions` (Fase 5). El **ritmo** del Modo Precisión no
+ * se persiste en `game_sessions` (Fase 5). El **ritmo** del Modo Supervivencia no
  * se almacena: se calcula desde `verbsMatched` y `timeMs` (`MECHANICS.md` §6).
  */
 export interface SessionResult {
@@ -127,7 +142,7 @@ export interface SessionResult {
 	readonly status: FinishedStatus
 	/** Duración de la partida en milisegundos. Siempre mayor que 0. */
 	readonly timeMs: number
-	/** En Modo Precisión siempre es 0: el primer error termina la ronda. */
+	/** En Modo Supervivencia siempre es 0: el primer error termina la ronda. */
 	readonly errors: number
 	readonly verbsMatched: number
 	/** Marca de tiempo en formato ISO 8601. */

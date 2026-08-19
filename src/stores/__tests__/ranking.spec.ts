@@ -226,8 +226,8 @@ describe('guardar una partida', () => {
 		expect(fake.inserts).toEqual([])
 	})
 
-	/** En Precisión sí se guarda aunque no llegue al piso: es historial. */
-	it('guarda una partida de Precisión por debajo del piso del ranking', async () => {
+	/** En Supervivencia sí se guarda aunque no llegue al piso: es historial. */
+	it('guarda una partida de Supervivencia por debajo del piso del ranking', async () => {
 		const fake = createFakeClient()
 		const store = await loadStore(fake.client, 'uuid-1')
 
@@ -257,8 +257,8 @@ describe('cargar la clasificación', () => {
 		])
 	})
 
-	/** En Precisión clasifica el ritmo, y más es mejor: orden descendente. */
-	it('consulta la vista de Precisión ordenada por ritmo descendente', async () => {
+	/** En Supervivencia clasifica el ritmo, y más es mejor: orden descendente. */
+	it('consulta la vista de Supervivencia ordenada por ritmo descendente', async () => {
 		const fake = createFakeClient()
 		const store = await loadStore(fake.client, null)
 
@@ -399,8 +399,8 @@ describe('posición y récord personal', () => {
 		expect(countQuery?.compare).toEqual({op: 'lt', column: 'time_ms', value: 40_000})
 	})
 
-	/** En Precisión gana el ritmo mayor, así que se cuentan los que lo superan. */
-	it('en Precisión cuenta por ritmo descendente', async () => {
+	/** En Supervivencia gana el ritmo mayor, así que se cuentan los que lo superan. */
+	it('en Supervivencia cuenta por ritmo descendente', async () => {
 		const fake = createFakeClient({personalBestRow: null, count: 1})
 		const store = await loadStore(fake.client, 'uuid-1')
 

@@ -10,7 +10,7 @@ import {
 
 /**
  * Reloj de partida: cuenta regresiva para el Modo Objetivo y ascendente para el
- * Modo Precisión (`MECHANICS.md` §2 y §3).
+ * Modo Supervivencia (`MECHANICS.md` §2 y §3).
  *
  * El tiempo **no se acumula sumando intervalos**, sino midiendo la diferencia
  * contra el reloj del sistema. Un `setInterval` no dispara con exactitud —se

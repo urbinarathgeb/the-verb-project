@@ -93,7 +93,7 @@ describe('isEligibleForRanking — Modo Objetivo', () => {
 	})
 })
 
-describe('isEligibleForRanking — Modo Precisión', () => {
+describe('isEligibleForRanking — Modo Supervivencia', () => {
 	/**
 	 * Lo normal en este modo es terminar fallando: el pool es mayor de lo que se
 	 * completa en una sesión (`MECHANICS.md` §3). Exigir victoria vaciaría el
@@ -158,10 +158,10 @@ function makeRow(overrides: Partial<RankingRow> = {}): RankingRow {
 
 describe('isPersistable', () => {
 	/**
-	 * Guardarse y clasificar no son lo mismo. Una partida de Precisión floja forma
+	 * Guardarse y clasificar no son lo mismo. Una partida de Supervivencia floja forma
 	 * parte del historial del jugador aunque la vista la deje fuera del ranking.
 	 */
-	it('guarda las partidas de Precisión aunque no lleguen al piso del ranking', () => {
+	it('guarda las partidas de Supervivencia aunque no lleguen al piso del ranking', () => {
 		const result = makeResult({mode: 'precision', verbsMatched: 1})
 
 		expect(isPersistable(result)).toBe(true)
@@ -208,7 +208,7 @@ describe('toRankingEntries', () => {
 		expect(entries.map((entry) => entry.position)).toEqual([1, 1, 3])
 	})
 
-	it('en Precisión empata por ritmo, no por tiempo', () => {
+	it('en Supervivencia empata por ritmo, no por tiempo', () => {
 		const entries = toRankingEntries(
 			[
 				makeRow({user_id: 'a', pace: 12, time_ms: 60 * SECOND}),
@@ -233,7 +233,7 @@ describe('toRankingEntries', () => {
 		expect(entries.map((entry) => entry.userId)).toEqual(['b', 'a'])
 	})
 
-	it('usa el ritmo que entrega la vista de Precisión', () => {
+	it('usa el ritmo que entrega la vista de Supervivencia', () => {
 		const entries = toRankingEntries([makeRow({pace: 7.5})], 'precision')
 
 		expect(entries[0]?.pace).toBe(7.5)
@@ -290,7 +290,7 @@ describe('rankingMetric', () => {
 		expect(rankingMetric(makeResult({mode: 'target', status: 'won', timeMs: 42_000}))).toBe(42_000)
 	})
 
-	it('en Precisión clasifica el ritmo', () => {
+	it('en Supervivencia clasifica el ritmo', () => {
 		const result = makeResult({mode: 'precision', verbsMatched: 10, timeMs: 60 * SECOND})
 
 		expect(rankingMetric(result)).toBe(10)
@@ -304,7 +304,7 @@ describe('isBetterMetric', () => {
 		expect(isBetterMetric(50_000, 40_000, 'target')).toBe(false)
 	})
 
-	it('en Precisión gana el ritmo mayor', () => {
+	it('en Supervivencia gana el ritmo mayor', () => {
 		expect(isBetterMetric(14, 9, 'precision')).toBe(true)
 		expect(isBetterMetric(9, 14, 'precision')).toBe(false)
 	})
@@ -335,7 +335,7 @@ describe('compareWithPersonalBest', () => {
 		expect(compareWithPersonalBest(result, 50_000)).toBe('not-improved')
 	})
 
-	it('mejora en Precisión con más ritmo', () => {
+	it('mejora en Supervivencia con más ritmo', () => {
 		const result = makeResult({mode: 'precision', verbsMatched: 14, timeMs: 60 * SECOND})
 
 		expect(compareWithPersonalBest(result, 9)).toBe('improved')
@@ -364,7 +364,7 @@ describe('bestMetricAfter', () => {
 		expect(bestMetricAfter(result, 40_000)).toBe(40_000)
 	})
 
-	it('se queda con el mejor de los dos en Precisión', () => {
+	it('se queda con el mejor de los dos en Supervivencia', () => {
 		const result = makeResult({mode: 'precision', verbsMatched: 9, timeMs: 60 * SECOND})
 
 		expect(bestMetricAfter(result, 14)).toBe(14)

@@ -1,5 +1,5 @@
 /**
- * Lógica del Modo Práctica (`MECHANICS.md` §4).
+ * Lógica del Dojo (`MECHANICS.md` §4).
  *
  * No usa el tablero de tres columnas: muestra una forma verbal y pide otra, con
  * tres alternativas. Es el modo de aprendizaje relajado, sin cronómetro y sin

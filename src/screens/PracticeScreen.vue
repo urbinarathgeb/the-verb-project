@@ -8,7 +8,10 @@ import {FORM_LABELS} from '@/lib/practice'
 import {isDifficulty} from '@/types/game'
 
 /**
- * Modo Práctica: opción múltiple sin cronómetro (`MECHANICS.md` §4).
+ * Dojo: opción múltiple sin cronómetro (`MECHANICS.md` §4).
+ *
+ * El identificador de la ruta y del código sigue siendo `practice`; «Dojo» es
+ * sólo el nombre visible (`CLAUDE.md` §5).
  *
  * A diferencia de la partida, aquí no hay reloj ni derrota. El refuerzo es la
  * racha, y el feedback es inmediato: se responde, se ve el resultado y se pasa a

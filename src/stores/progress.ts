@@ -5,7 +5,7 @@ import {supabase} from '@/lib/supabase'
 import {useAuthStore} from '@/stores/auth'
 
 /**
- * Progreso del usuario por verbo, alimentado por el Modo Práctica
+ * Progreso del usuario por verbo, alimentado por el Dojo
  * (`MECHANICS.md` §4 y §6).
  *
  * Sin sesión vive sólo en memoria y se pierde al recargar: es el modo invitado
@@ -123,7 +123,7 @@ export const useProgressStore = defineStore('progress', () => {
 		return entries.value[verbId] ?? emptyProgress(verbId)
 	}
 
-	/** Registra una respuesta del Modo Práctica sobre un verbo. */
+	/** Registra una respuesta del Dojo sobre un verbo. */
 	function recordAnswer(verbId: number, isCorrect: boolean): void {
 		const current = progressFor(verbId)
 

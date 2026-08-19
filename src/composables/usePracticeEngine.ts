@@ -13,7 +13,7 @@ import {getVerbsForDifficulty} from '@/data/verbs'
 import type {Difficulty} from '@/types/game'
 
 /**
- * Motor del Modo Práctica: pregunta actual, respuesta, racha y progreso.
+ * Motor del Dojo: pregunta actual, respuesta, racha y progreso.
  *
  * La **sesión** (qué pregunta se ve, la racha en curso) es estado local del
  * composable, no de Pinia: muere al salir de la pantalla y ningún otro

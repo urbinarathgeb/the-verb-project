@@ -39,6 +39,7 @@ export function useGameEngine() {
 		// Marcadores
 		matchedCount,
 		errors,
+		mistakes,
 		targetVerbs,
 		remainingTargets,
 		pace,
@@ -92,6 +93,7 @@ export function useGameEngine() {
 		// Marcadores
 		matchedCount,
 		errors,
+		mistakes,
 		targetVerbs,
 		remainingTargets,
 		pace,

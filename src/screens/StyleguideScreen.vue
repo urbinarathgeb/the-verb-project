@@ -255,7 +255,7 @@ const isModalOpen = ref(false)
 					:pace="0"
 				/>
 				<p class="text-caption">
-					Modo Precisión: cronómetro ascendente y ritmo en lugar de errores.
+					Modo Supervivencia: cronómetro ascendente y ritmo en lugar de errores.
 				</p>
 				<HudBar
 					mode="precision"

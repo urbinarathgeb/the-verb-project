@@ -21,7 +21,7 @@ const {userId, isAuthenticated} = useAuth()
 
 const MODE_LABELS: Record<GameMode, string> = {
 	target: 'Contrarreloj',
-	precision: 'Precisión',
+	precision: 'Supervivencia',
 }
 
 const selectedMode = ref<GameMode>('target')

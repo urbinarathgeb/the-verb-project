@@ -38,7 +38,7 @@ export function formatDurationPrecise(ms: number): string {
 	return `${minutes}:${seconds.toString().padStart(2, '0')}.${tenths}`
 }
 
-/** Ritmo del Modo Precisión con un decimal, por ejemplo `12.5`. */
+/** Ritmo del Modo Supervivencia con un decimal, por ejemplo `12.5`. */
 export function formatPace(verbsPerMinute: number): string {
 	return verbsPerMinute.toFixed(1)
 }

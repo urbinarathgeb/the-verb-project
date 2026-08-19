@@ -112,7 +112,7 @@ export const useRankingStore = defineStore('ranking', () => {
 		if (userId === null) return null
 
 		/*
-		 * En Objetivo gana el tiempo menor; en Precisión, el ritmo mayor.
+		 * En Objetivo gana el tiempo menor; en Supervivencia, el ritmo mayor.
 		 *
 		 * Se excluye la propia fila (`neq`). No es una optimización: la vista calcula
 		 * el ritmo con `numeric` de Postgres y el cliente con coma flotante, así que
@@ -221,7 +221,7 @@ export const useRankingStore = defineStore('ranking', () => {
 	 * Carga la clasificación de un modo y nivel.
 	 *
 	 * Cada modo tiene su vista y su orden porque «el mejor» significa cosas
-	 * distintas: en Objetivo el menor tiempo, en Precisión el mayor ritmo. Las dos
+	 * distintas: en Objetivo el menor tiempo, en Supervivencia el mayor ritmo. Las dos
 	 * ramas se escriben enteras en lugar de parametrizar el nombre de la vista,
 	 * para que el cliente tipado siga sabiendo qué columnas existen en cada una.
 	 */

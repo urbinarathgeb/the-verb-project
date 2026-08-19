@@ -2,9 +2,12 @@
 import {computed, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
+import GameModal from '@/components/GameModal.vue'
 import {useAuth} from '@/composables/useAuth'
 import {LEVELS} from '@/data/levels'
-import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/game'
+import {ONBOARDING_SECTIONS, ONBOARDING_TITLE} from '@/data/onboarding'
+import {getVerbsForDifficulty} from '@/data/verbs'
+import {DIFFICULTIES, MENU_MODES, PRACTICE_MODE, type Difficulty, type MenuMode} from '@/types/game'
 
 /**
  * Menú de entrada: elegir modo y nivel.
@@ -31,18 +34,22 @@ const {
 } = useAuth()
 
 /** Textos de cada modo. Los identificadores van en inglés; lo visible, en español. */
-const MODE_INFO: Record<GameMode, {label: string; description: string}> = {
+const MODE_INFO: Record<MenuMode, {label: string; description: string}> = {
 	target: {
 		label: 'Contrarreloj',
 		description: 'Empareja los verbos del objetivo antes de que se acabe el tiempo.',
 	},
 	precision: {
-		label: 'Precisión',
+		label: 'Supervivencia',
 		description: 'Sin límite de tiempo, pero un solo error termina la partida.',
+	},
+	practice: {
+		label: 'Dojo',
+		description: 'Sin reloj y sin perder: una forma, tres opciones y una racha que cuidar.',
 	},
 }
 
-const selectedMode = ref<GameMode>('target')
+const selectedMode = ref<MenuMode>('target')
 const selectedDifficulty = ref<Difficulty>('easy')
 
 /**
@@ -61,17 +68,40 @@ const showAvatar = computed(
 
 const modeDescription = computed(() => MODE_INFO[selectedMode.value].description)
 
-/** Resumen del nivel elegido, para que la dificultad no sea sólo una etiqueta. */
+/**
+ * Resumen del nivel elegido, para que la dificultad no sea sólo una etiqueta.
+ *
+ * Empieza por el tamaño del repertorio porque es lo único que significa algo en
+ * los tres casos: el nivel también decide de qué verbos pregunta el Modo
+ * Dojo, y hasta ahora el resumen sólo hablaba de partida —«objetivo de 8 ·
+ * 90 s»— que allí no aplica (`PLAN.md`, Bitácora, D7).
+ */
 const levelSummary = computed(() => {
 	const level = LEVELS[selectedDifficulty.value]
-	const size = `${level.boardSize} verbos en pantalla`
+	const pool = `${getVerbsForDifficulty(selectedDifficulty.value).length} verbos`
+	const size = `${level.boardSize} en pantalla`
+
+	// El Dojo no usa tablero, así que hablar de celdas o de objetivo no aplica.
+	if (selectedMode.value === PRACTICE_MODE) return `${pool} · preguntas de este nivel`
 
 	return selectedMode.value === 'target'
-		? `${size} · objetivo de ${level.targetVerbs} · ${level.timeLimitMs / 1000} s`
-		: `${size} · hasta el primer fallo`
+		? `${pool} · ${size} · objetivo de ${level.targetVerbs} · ${level.timeLimitMs / 1000} s`
+		: `${pool} · ${size} · hasta el primer fallo`
 })
 
+/**
+ * Arranca el modo elegido.
+ *
+ * El Dojo vive en otra ruta porque no usa el tablero, pero desde el menú se
+ * elige igual que los demás: para el jugador es un modo más, aunque por dentro
+ * sea otra pantalla y no genere ranking (`MECHANICS.md` §4).
+ */
 function play(): void {
+	if (selectedMode.value === PRACTICE_MODE) {
+		router.push({name: 'practice', params: {difficulty: selectedDifficulty.value}})
+		return
+	}
+
 	router.push({
 		name: 'play',
 		params: {mode: selectedMode.value, difficulty: selectedDifficulty.value},
@@ -79,12 +109,11 @@ function play(): void {
 }
 
 /**
- * El Modo Práctica usa el mismo nivel elegido arriba, pero ignora el modo: no es
- * competitivo, no tiene reloj ni ranking (`MECHANICS.md` §4).
+ * Onboarding. Se abre sólo al pulsar el botón: no se guarda ninguna marca de
+ * «ya lo vi», porque el modo invitado no persiste nada (`CLAUDE.md` §8) y una
+ * excepción para esto no compensa.
  */
-function practice(): void {
-	router.push({name: 'practice', params: {difficulty: selectedDifficulty.value}})
-}
+const isHelpOpen = ref(false)
 
 /** La clasificación es pública: se puede consultar sin haber iniciado sesión. */
 function goToRanking(): void {
@@ -104,7 +133,7 @@ function goToRanking(): void {
 				<legend class="home-legend">Modo</legend>
 				<div class="home-options">
 					<ChoiceButton
-						v-for="mode in GAME_MODES"
+						v-for="mode in MENU_MODES"
 						:key="mode"
 						:selected="selectedMode === mode"
 						@click="selectedMode = mode"
@@ -132,12 +161,14 @@ function goToRanking(): void {
 		</div>
 
 		<div class="home-actions">
-			<ChoiceButton variant="primary" class="home-play" @click="play">Jugar</ChoiceButton>
-			<ChoiceButton variant="secondary" class="home-practice" @click="practice">
-				Practicar sin reloj
+			<ChoiceButton variant="primary" class="home-play" @click="play">
+				{{ selectedMode === PRACTICE_MODE ? 'Entrar al Dojo' : 'Jugar' }}
 			</ChoiceButton>
 			<ChoiceButton variant="ghost" class="home-practice" @click="goToRanking">
 				Ver clasificación
+			</ChoiceButton>
+			<ChoiceButton variant="ghost" class="home-practice" @click="isHelpOpen = true">
+				¿Cómo se juega?
 			</ChoiceButton>
 		</div>
 
@@ -183,6 +214,30 @@ function goToRanking(): void {
 				{{ errorMessage }}
 			</p>
 		</div>
+		<!--
+			Descartable: es informativo, así que se cierra con `Esc`, con el fondo y
+			con su botón. `GameModal` ya aporta el `Teleport`, la trampa de foco y la
+			restauración al cerrar.
+		-->
+		<GameModal
+			:open="isHelpOpen"
+			:title="ONBOARDING_TITLE"
+			dismissible
+			focus-panel
+			@close="isHelpOpen = false"
+		>
+			<div class="home-help">
+				<!-- `h3` porque el título del modal es un `h2`: la jerarquía no salta. -->
+				<section v-for="section in ONBOARDING_SECTIONS" :key="section.title">
+					<h3 class="home-help-title">{{ section.title }}</h3>
+					<p v-for="line in section.body" :key="line" class="home-help-line">{{ line }}</p>
+				</section>
+			</div>
+
+			<template #actions>
+				<ChoiceButton variant="primary" @click="isHelpOpen = false">Entendido</ChoiceButton>
+			</template>
+		</GameModal>
 	</section>
 </template>
 
@@ -271,6 +326,23 @@ function goToRanking(): void {
 
 .home-practice {
 	width: 100%;
+}
+
+.home-help {
+	display: flex;
+	flex-direction: column;
+	gap: var(--spacing-gutter);
+	text-align: left;
+}
+
+.home-help-title {
+	font-size: var(--text-label-bold);
+	margin-bottom: 4px;
+}
+
+.home-help-line {
+	font-size: var(--text-caption);
+	margin-top: 4px;
 }
 
 .home-account {

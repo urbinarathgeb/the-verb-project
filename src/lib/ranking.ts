@@ -2,7 +2,7 @@
  * Reglas de clasificación en el ranking (`MECHANICS.md` §2, §3 y §5).
  *
  * Son funciones puras y viven fuera del store porque la Fase 5 las necesita
- * también del otro lado: el ritmo del Modo Precisión no se guarda en
+ * también del otro lado: el ritmo del Modo Supervivencia no se guarda en
  * `game_sessions`, se calcula al consultar el ranking a partir de
  * `verbs_matched` y `time_ms` (`MECHANICS.md` §6).
  */
@@ -38,7 +38,7 @@ export function calculatePace(verbsMatched: number, timeMs: number): number {
  *
  * - **Objetivo:** sólo los intentos exitosos. La métrica es el tiempo empleado en
  *   alcanzar el objetivo, así que una derrota no tiene tiempo que comparar.
- * - **Precisión:** cualquier desenlace, siempre que supere el piso de aciertos.
+ * - **Supervivencia:** cualquier desenlace, siempre que supere el piso de aciertos.
  *   Lo normal en este modo es terminar fallando —el pool es mayor de lo que se
  *   completa en una sesión—, así que exigir victoria dejaría el ranking vacío. El
  *   piso evita que una sesión trivial (1 acierto en 300 ms) suba a lo alto por la
@@ -57,7 +57,7 @@ export function isEligibleForRanking(result: SessionResult): boolean {
  * ¿Se guarda esta partida en `game_sessions`?
  *
  * No es lo mismo que entrar al ranking, y la diferencia es deliberada: una
- * partida de Precisión por debajo del piso **sí se guarda** —forma parte del
+ * partida de Supervivencia por debajo del piso **sí se guarda** —forma parte del
  * historial del jugador— pero la vista `precision_ranking` la deja fuera de la
  * clasificación. En Objetivo, en cambio, una derrota no tiene tiempo que
  * comparar y no aporta nada, así que ni se guarda (`MECHANICS.md` §5).
@@ -69,7 +69,7 @@ export function isPersistable(result: SessionResult): boolean {
 /**
  * Métrica por la que clasifica un resultado, según su modo.
  *
- * En Objetivo es el tiempo, donde **menos es mejor**; en Precisión el ritmo,
+ * En Objetivo es el tiempo, donde **menos es mejor**; en Supervivencia el ritmo,
  * donde más es mejor (`MECHANICS.md` §2 y §3). Quien la use tiene que saber en
  * qué dirección compara, y por eso existe `isBetterMetric`.
  */
@@ -149,7 +149,7 @@ export interface RankingEntry {
 	readonly timeMs: number
 	readonly verbsMatched: number
 	readonly errors: number
-	/** Verbos por minuto. La vista de Precisión lo entrega; en Objetivo se calcula. */
+	/** Verbos por minuto. La vista de Supervivencia lo entrega; en Objetivo se calcula. */
 	readonly pace: number
 	readonly completedAt: string
 }
@@ -185,7 +185,7 @@ export function toRankingEntries(rows: readonly RankingRow[], mode: GameMode): R
 				timeMs: row.time_ms,
 				verbsMatched: row.verbs_matched,
 				errors: row.errors ?? 0,
-				// La vista de Precisión ya trae el ritmo calculado; la de Objetivo no,
+				// La vista de Supervivencia ya trae el ritmo calculado; la de Objetivo no,
 				// porque allí no es la métrica de clasificación.
 				pace: row.pace ?? calculatePace(row.verbs_matched, row.time_ms),
 				completedAt: row.completed_at ?? '',
