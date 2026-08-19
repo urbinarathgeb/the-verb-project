@@ -50,13 +50,14 @@ export function useGameEngine() {
 		timeLimitMs,
 		// Desenlace
 		isPlaying,
+		isPaused,
 		isFinished,
 		result,
 		isRankingEligible,
 	} = storeToRefs(store)
 
 	// Acciones: funciones, no necesitan `storeToRefs`.
-	const {startGame, selectCell, finish, clearError, resetGame} = store
+	const {startGame, selectCell, finish, pause, resume, clearError, resetGame} = store
 
 	/**
 	 * Estado visual de una celda, para que el componente no tenga que combinar
@@ -71,7 +72,12 @@ export function useGameEngine() {
 	 * fuera de la partida y sobre un verbo ya resuelto, el tablero es inerte.
 	 */
 	function isCellSelectable(cell: Cell): boolean {
-		return isPlaying.value && !resolvedVerbIds.value.includes(cell.verbId)
+		// En pausa el tablero queda inerte: el modal lo tapa, pero un tablero que
+		// responde por debajo de un diálogo es un tablero que acepta jugadas a
+		// ciegas con el teclado.
+		if (!isPlaying.value || isPaused.value) return false
+
+		return !resolvedVerbIds.value.includes(cell.verbId)
 	}
 
 	return {
@@ -104,6 +110,7 @@ export function useGameEngine() {
 		timeLimitMs,
 		// Desenlace
 		isPlaying,
+		isPaused,
 		isFinished,
 		result,
 		isRankingEligible,
@@ -111,6 +118,8 @@ export function useGameEngine() {
 		startGame,
 		selectCell,
 		finish,
+		pause,
+		resume,
 		clearError,
 		resetGame,
 	}

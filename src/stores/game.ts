@@ -51,6 +51,18 @@ export const useGameStore = defineStore('game', () => {
 	const completedAt = shallowRef<string | null>(null)
 
 	/**
+	 * Partida en pausa.
+	 *
+	 * Es un booleano aparte y **no** un valor más de `GameStatus`, a propósito: la
+	 * partida sigue en curso: no ha terminado, no se ha descartado y su resultado
+	 * no existe todavía. Meterlo en `status` obligaría a contemplar el caso en la
+	 * condición de victoria, en el resultado y en las dos vistas de ranking, para
+	 * representar algo que no cambia en qué estado está la partida sino si acepta
+	 * jugadas.
+	 */
+	const isPaused = shallowRef(false)
+
+	/**
 	 * Celdas de cada intento fallido, para poder explicarlos al terminar.
 	 *
 	 * Es independiente del contador `errors`, y tiene que serlo: en Modo Supervivencia
@@ -145,6 +157,7 @@ export const useGameStore = defineStore('game', () => {
 		errors.value = 0
 		completedAt.value = null
 		mistakeAttempts.value = []
+		isPaused.value = false
 	}
 
 	/**
@@ -160,6 +173,7 @@ export const useGameStore = defineStore('game', () => {
 		errors.value = 0
 		completedAt.value = null
 		mistakeAttempts.value = []
+		isPaused.value = false
 		mode.value = nextMode
 		difficulty.value = nextDifficulty
 
@@ -223,7 +237,7 @@ export const useGameStore = defineStore('game', () => {
 
 		graceTimer = setTimeout(() => {
 			graceTimer = null
-			if (status.value !== 'playing') return
+			if (status.value !== 'playing' || isPaused.value) return
 
 			applyRefills(true)
 		}, level.value?.refillGraceMs ?? 0)
@@ -266,7 +280,8 @@ export const useGameStore = defineStore('game', () => {
 
 		drainTimer = setTimeout(() => {
 			drainTimer = null
-			if (status.value !== 'playing') return
+			// La deuda se conserva: al reanudar, `resume` vuelve a pedir el drenaje.
+			if (status.value !== 'playing' || isPaused.value) return
 
 			applyRefills(false)
 		}, REFILL_APPEAR_MS)
@@ -319,6 +334,7 @@ export const useGameStore = defineStore('game', () => {
 
 		cancelRefills()
 		timer.pause()
+		isPaused.value = false
 		status.value = finalStatus
 		completedAt.value = new Date().toISOString()
 	}
@@ -388,13 +404,46 @@ export const useGameStore = defineStore('game', () => {
 	}
 
 	/**
+	 * Detiene la partida sin terminarla.
+	 *
+	 * La usa la pantalla cuando la pestaña pasa a segundo plano. `useTimer` mide
+	 * contra el reloj del sistema a propósito —para que el tiempo del ranking no
+	 * derive—, y el efecto colateral era que una notificación o una llamada
+	 * arruinaban la partida: en Contrarreloj se volvía a un tablero muerto a 0:00
+	 * y en Supervivencia el ritmo se hundía por tiempo que nadie jugó
+	 * (`PLAN.md`, Bitácora, D13).
+	 */
+	function pause(): void {
+		if (status.value !== 'playing' || isPaused.value) return
+
+		isPaused.value = true
+		timer.pause()
+	}
+
+	/**
+	 * Reanuda. Es una acción explícita del jugador y no algo que ocurra al volver
+	 * a la pestaña: recuperar el foco no significa estar mirando el tablero.
+	 */
+	function resume(): void {
+		if (!isPaused.value) return
+
+		isPaused.value = false
+
+		if (status.value !== 'playing') return
+
+		timer.start()
+		// Paga lo que venciera durante la pausa; el drenaje volvió temprano.
+		queueDrain()
+	}
+
+	/**
 	 * Registra la pulsación de una celda y devuelve qué ocurrió.
 	 *
 	 * El resultado se devuelve siempre, incluso si la jugada termina la partida:
 	 * la UI lo necesita para animar la tríada saliente o la sacudida del error.
 	 */
 	function selectCell(cell: Cell): SelectionOutcome {
-		if (status.value !== 'playing') return {type: 'ignored'}
+		if (status.value !== 'playing' || isPaused.value) return {type: 'ignored'}
 
 		const outcome = board.select(cell)
 
@@ -426,6 +475,7 @@ export const useGameStore = defineStore('game', () => {
 		status,
 		errors,
 		completedAt,
+		isPaused,
 		mistakeAttempts,
 		mistakes,
 		// Configuración derivada
@@ -458,6 +508,8 @@ export const useGameStore = defineStore('game', () => {
 		startGame,
 		selectCell,
 		finish,
+		pause,
+		resume,
 		clearError,
 		resetGame,
 	}

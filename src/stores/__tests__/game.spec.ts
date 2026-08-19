@@ -119,6 +119,7 @@ describe('useGameStore — estado inicial', () => {
 			'completedAt',
 			'difficulty',
 			'errors',
+			'isPaused',
 			'mistakeAttempts',
 			'mode',
 			'status',
@@ -1062,5 +1063,136 @@ describe('useGameStore — registro de fallos', () => {
 		store.startGame('target', 'easy')
 
 		expect(store.mistakes).toEqual([])
+	})
+})
+
+/**
+ * Pausa.
+ *
+ * Existe porque `useTimer` mide contra el reloj del sistema a propósito, para
+ * que el tiempo del ranking no derive: el efecto colateral era que una
+ * notificación o una llamada arruinaban la partida (`PLAN.md`, Bitácora, D13).
+ */
+describe('useGameStore — pausa', () => {
+	it('detiene el reloj sin terminar la partida', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		advance(3 * SECOND)
+		store.pause()
+
+		const frozen = store.elapsedMs
+
+		advance(30 * SECOND)
+
+		expect(store.isPaused).toBe(true)
+		expect(store.status).toBe('playing')
+		expect(store.elapsedMs).toBe(frozen)
+	})
+
+	/**
+	 * Sin esto, el tiempo detenido seguiría contando en el ritmo: el jugador
+	 * volvería a una partida con un ritmo hundido por segundos que nadie jugó.
+	 */
+	it('el tiempo en pausa no cuenta para el resultado', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		solveMany(store, MIN_MATCHES_FOR_RANKING)
+
+		// Tiempo jugado de verdad, para tener con qué comparar.
+		advance(4 * SECOND)
+		const playedMs = store.elapsedMs
+
+		store.pause()
+		advance(5 * 60 * SECOND)
+		store.resume()
+
+		fail(store)
+
+		/*
+		 * El margen cubre lo que `fail` deja correr esperando reposiciones, pero se
+		 * queda muy por debajo de los cinco minutos de pausa: sin la pausa, el
+		 * resultado rondaría los 309 s y este límite lo detectaría.
+		 */
+		expect(store.result?.timeMs).toBeLessThan(playedMs + 60 * SECOND)
+	})
+
+	it('el tablero no acepta jugadas en pausa', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		const verbId = visibleVerbIds(store)[0] ?? 0
+		store.pause()
+
+		const outcome = store.selectCell(cellOf(store, verbId, 'present'))
+
+		expect(outcome).toEqual({type: 'ignored'})
+		expect(store.selection.present).toBeNull()
+	})
+
+	it('reanudar vuelve a poner el reloj en marcha', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		store.pause()
+		store.resume()
+		advance(2 * SECOND)
+
+		expect(store.isPaused).toBe(false)
+		expect(store.elapsedMs).toBeGreaterThanOrEqual(2 * SECOND)
+	})
+
+	/**
+	 * La deuda de reposición se conserva: durante la pausa el drenaje vuelve
+	 * temprano, y `resume` lo vuelve a pedir. Sin eso el tablero se quedaría
+	 * encogido el resto de la partida.
+	 */
+	it('las reposiciones vencidas durante la pausa se pagan al reanudar', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+
+		const config = getLevelConfig('easy')
+		solveMany(store, config.refillMinVacancies)
+
+		const vacatedBeforePause = store.vacatedCount
+		store.pause()
+
+		// Vence de sobra el retardo de todas las reposiciones agendadas.
+		advance(config.refillDelayMs + config.refillGraceMs + REFILL_APPEAR_MS)
+
+		expect(store.vacatedCount).toBe(vacatedBeforePause)
+
+		store.resume()
+		advance(REFILL_APPEAR_MS)
+
+		expect(store.vacatedCount).toBeLessThan(vacatedBeforePause)
+	})
+
+	it('una partida nueva no hereda la pausa', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+		store.pause()
+
+		store.startGame('target', 'medium')
+
+		expect(store.isPaused).toBe(false)
+	})
+
+	it('terminar la partida cancela la pausa', () => {
+		const store = useGameStore()
+		store.startGame('precision', 'easy')
+		store.pause()
+		store.finish('lost')
+
+		expect(store.isPaused).toBe(false)
+	})
+
+	it('pausar fuera de partida no hace nada', () => {
+		const store = useGameStore()
+
+		store.pause()
+
+		expect(store.isPaused).toBe(false)
 	})
 })
