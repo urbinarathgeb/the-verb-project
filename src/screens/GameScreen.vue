@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import {computed, onBeforeUnmount, onMounted, ref, watch} from 'vue'
 import {useRouter} from 'vue-router'
+import ChoiceButton from '@/components/ChoiceButton.vue'
 import GameBoard from '@/components/GameBoard.vue'
 import GameModal from '@/components/GameModal.vue'
 import HudBar from '@/components/HudBar.vue'
@@ -65,16 +66,49 @@ function beginGame(): void {
 /* ---------------------------------------------------------------------------
  * Fin de partida
  *
- * El desenlace se muestra en `ResultScreen`, no aquí: es una pantalla propia con
- * métricas por modo y es el destino natural tras una partida.
+ * El desenlace se anuncia **aquí, sobre el tablero**, y no navegando solo a
+ * `ResultScreen`. Dos motivos:
+ *
+ * 1. Antes, todo el feedback vivía en otra ruta, detrás de una navegación
+ *    asíncrona y dependiendo de que un estado en memoria sobreviviera al
+ *    desmontaje. Si esa navegación fallaba, el jugador se quedaba ante un
+ *    tablero muerto a 0:00 sin ningún mensaje. Anunciarlo in situ elimina esa
+ *    clase de fallo entera, no sólo sus síntomas.
+ * 2. El tablero congelado es información real: se ve qué tríadas faltaban.
  * ------------------------------------------------------------------------- */
 
-watch(
-	() => engine.isFinished.value,
-	(finished) => {
-		if (finished) router.push({name: 'result'})
-	},
-)
+/** Titular del desenlace. Cada modo pierde por un motivo distinto. */
+const outcomeTitle = computed(() => {
+	if (engine.status.value === 'won') return '¡Lo lograste!'
+
+	return engine.mode.value === 'precision' ? 'Fallaste' : '¡Se acabó el tiempo!'
+})
+
+/** Una línea con el dato que importa en cada modo. */
+const outcomeSummary = computed(() => {
+	const matched = engine.matchedCount.value
+	const target = engine.targetVerbs.value
+
+	if (engine.mode.value === 'target' && target !== null) {
+		return `${matched} de ${target} verbos emparejados.`
+	}
+
+	return `${matched} verbos emparejados.`
+})
+
+function goHome(): void {
+	// Salir sin ver el resultado lo descarta: nadie más va a leerlo.
+	engine.resetGame()
+	router.push({name: 'home'}).catch(() => {})
+}
+
+function goToResult(): void {
+	// `catch` porque `push` devuelve una promesa que puede rechazar si falla la
+	// carga del chunk. Antes se ignoraba y la navegación abortaba en silencio.
+	router.push({name: 'result'}).catch(() => {
+		router.push({name: 'home'}).catch(() => {})
+	})
+}
 
 /* ---------------------------------------------------------------------------
  * Anuncio para lectores de pantalla
@@ -107,6 +141,17 @@ function handleSelect(cell: Cell): void {
 	}
 }
 
+/*
+ * El desenlace se comunica visualmente con un modal. Esto lo traduce a texto
+ * para quien use un lector de pantalla, igual que las jugadas (`CLAUDE.md` §11).
+ */
+watch(
+	() => engine.isFinished.value,
+	(finished) => {
+		if (finished) announce(`${outcomeTitle.value} ${outcomeSummary.value}`)
+	},
+)
+
 onMounted(() => {
 	// Un parámetro inválido no debería llegar hasta aquí (lo filtra el guard de
 	// la ruta), pero si llegara, volver al menú es mejor que un tablero vacío.
@@ -114,6 +159,17 @@ onMounted(() => {
 		router.replace({name: 'home'})
 		return
 	}
+
+	/*
+	 * Se descarta cualquier partida anterior ANTES de la cuenta atrás.
+	 *
+	 * El desenlace sobrevive a propósito para que `ResultScreen` pueda leerlo, así
+	 * que si el jugador terminó una partida y volvió al menú sin pasar por el
+	 * resultado, el estado seguía en `won`/`lost`: al entrar aquí de nuevo, el
+	 * modal de desenlace aparecía sobre la cuenta atrás y obligaba a pulsar «Ver
+	 * resultado» para poder seguir jugando.
+	 */
+	if (engine.isFinished.value) engine.resetGame()
 
 	countdown.start()
 })
@@ -163,6 +219,18 @@ onBeforeUnmount(() => {
 			<p class="game-countdown" aria-live="assertive">{{ countdownLabel }}</p>
 			<p>Empareja las tres formas de cada verbo.</p>
 		</GameModal>
+
+		<!--
+			Desenlace. No descartable: cerrarlo sin querer dejaría al jugador ante un
+			tablero inerte sin saber qué pasó, que es justo el problema que resuelve.
+		-->
+		<GameModal :open="engine.isFinished.value" :title="outcomeTitle">
+			<p class="game-outcome">{{ outcomeSummary }}</p>
+			<template #actions>
+				<ChoiceButton variant="primary" @click="goToResult">Ver resultado</ChoiceButton>
+				<ChoiceButton variant="ghost" @click="goHome">Volver al menú</ChoiceButton>
+			</template>
+		</GameModal>
 	</section>
 </template>
 
@@ -181,6 +249,11 @@ onBeforeUnmount(() => {
 .game-board-area {
 	flex: 1 1 auto;
 	min-height: 0;
+}
+
+.game-outcome {
+	font-size: var(--text-body-lg);
+	text-align: center;
 }
 
 .game-countdown {

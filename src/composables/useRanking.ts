@@ -15,6 +15,9 @@ export function useRanking() {
 	const {
 		lastSaveOutcome,
 		isSaving,
+		personalBestMetric,
+		position,
+		lastVerdict,
 		entries,
 		loadStatus,
 		loadError,
@@ -24,11 +27,14 @@ export function useRanking() {
 		isEmpty,
 	} = storeToRefs(store)
 
-	const {saveResult, loadRanking, reset} = store
+	const {saveResult, submitResult, loadRanking, clearStanding, reset} = store
 
 	return {
 		lastSaveOutcome,
 		isSaving,
+		personalBestMetric,
+		position,
+		lastVerdict,
 		entries,
 		loadStatus,
 		loadError,
@@ -37,7 +43,9 @@ export function useRanking() {
 		isLoading,
 		isEmpty,
 		saveResult,
+		submitResult,
 		loadRanking,
+		clearStanding,
 		reset,
 	}
 }

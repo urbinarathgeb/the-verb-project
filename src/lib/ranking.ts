@@ -67,6 +67,61 @@ export function isPersistable(result: SessionResult): boolean {
 }
 
 /**
+ * Métrica por la que clasifica un resultado, según su modo.
+ *
+ * En Objetivo es el tiempo, donde **menos es mejor**; en Precisión el ritmo,
+ * donde más es mejor (`MECHANICS.md` §2 y §3). Quien la use tiene que saber en
+ * qué dirección compara, y por eso existe `isBetterMetric`.
+ */
+export function rankingMetric(result: SessionResult): number {
+	return result.mode === 'target'
+		? result.timeMs
+		: calculatePace(result.verbsMatched, result.timeMs)
+}
+
+/** ¿`candidate` es mejor marca que `reference` en este modo? */
+export function isBetterMetric(candidate: number, reference: number, mode: GameMode): boolean {
+	return mode === 'target' ? candidate < reference : candidate > reference
+}
+
+/**
+ * Cómo queda este resultado frente a la mejor marca anterior del jugador.
+ *
+ * Es una unión y no un booleano porque la primera partida **no es un récord**:
+ * celebrar «¡nuevo récord!» cuando no había nada que batir suena a premio vacío,
+ * pero tampoco merece silencio.
+ */
+export type RecordVerdict = 'first' | 'improved' | 'not-improved' | 'not-eligible'
+
+export function compareWithPersonalBest(
+	result: SessionResult,
+	previousBestMetric: number | null,
+): RecordVerdict {
+	// Una partida que no clasifica no puede ser récord de nada.
+	if (!isEligibleForRanking(result)) return 'not-eligible'
+	if (previousBestMetric === null) return 'first'
+
+	return isBetterMetric(rankingMetric(result), previousBestMetric, result.mode)
+		? 'improved'
+		: 'not-improved'
+}
+
+/**
+ * Mejor marca del jugador tras contar este resultado.
+ *
+ * Se calcula en el cliente en lugar de releer la vista después de insertar: la
+ * partida acaba de guardarse, así que el mejor de los dos valores es exactamente
+ * lo que devolvería el servidor, y evita una consulta de ida y vuelta.
+ */
+export function bestMetricAfter(result: SessionResult, previousBestMetric: number | null): number {
+	const current = rankingMetric(result)
+
+	if (previousBestMetric === null) return current
+
+	return isBetterMetric(current, previousBestMetric, result.mode) ? current : previousBestMetric
+}
+
+/**
  * Fila cruda de cualquiera de las dos vistas de ranking.
  *
  * Todo es opcional y anulable porque así lo declara el tipo generado: Postgres

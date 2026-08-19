@@ -28,6 +28,10 @@ interface FakeOptions {
 	selectDelayMs?: number
 	/** Retraso por vista, para decidir qué respuesta llega la última. */
 	delaysByTable?: Record<string, number>
+	/** Fila que devuelve la consulta de marca personal, o `null` si no tiene. */
+	personalBestRow?: {time_ms?: number | null; pace?: number | null} | null
+	/** Lo que devuelve el `count` de cabecera al calcular la posición. */
+	count?: number | null
 }
 
 /**
@@ -37,20 +41,78 @@ interface FakeOptions {
  */
 function createFakeClient(options: FakeOptions = {}) {
 	const inserts: Record<string, unknown>[] = []
-	const queries: {table: string; column?: string; value?: unknown; ascending?: boolean}[] = []
+	/** Orden en que ocurren las operaciones, para poder afirmar sobre la secuencia. */
+	const events: string[] = []
+
+	/**
+	 * Mejor marca visible AHORA MISMO, contando lo ya insertado.
+	 *
+	 * Imita el comportamiento real de la vista: en cuanto la partida se guarda,
+	 * `distinct on (user_id, level)` la incluye. Sin esto, el doble devolvería
+	 * siempre la misma marca previa y los tests no distinguirían leer antes de
+	 * insertar de leer después, que es justo lo que hay que vigilar.
+	 */
+	function visibleBest(column: 'time_ms' | 'pace'): number | null {
+		const stored = options.personalBestRow?.[column] ?? null
+		const inserted = inserts.map((row) =>
+			column === 'time_ms'
+				? Number(row.time_ms)
+				: (Number(row.verbs_matched) * 60_000) / Number(row.time_ms),
+		)
+
+		const candidates = [...(stored === null ? [] : [stored]), ...inserted]
+
+		if (candidates.length === 0) return null
+
+		return column === 'time_ms' ? Math.min(...candidates) : Math.max(...candidates)
+	}
+	const queries: {
+		table: string
+		column?: string
+		value?: unknown
+		ascending?: boolean
+		head?: boolean
+		compare?: {op: string; column: string; value: unknown}
+		excluded?: {column: string; value: unknown}
+	}[] = []
 
 	const client = {
 		from: (table: string) => ({
 			insert: (values: Record<string, unknown>) => {
+				events.push('insert')
 				inserts.push({table, ...values})
 
 				return Promise.resolve({error: options.insertError ?? null})
 			},
-			select: () => {
+			select: (_columns?: unknown, config?: {count?: string; head?: boolean}) => {
 				const query: (typeof queries)[number] = {table}
+				if (config?.head === true) query.head = true
 				queries.push(query)
 
 				const chain = {
+					neq: (column: string, value: unknown) => {
+						query.excluded = {column, value}
+						return chain
+					},
+					lt: (column: string, value: unknown) => {
+						query.compare = {op: 'lt', column, value}
+						return chain
+					},
+					gt: (column: string, value: unknown) => {
+						query.compare = {op: 'gt', column, value}
+						return chain
+					},
+					maybeSingle: () => {
+						events.push('personal-best')
+
+						const column = table === 'target_ranking' ? 'time_ms' : 'pace'
+						const best = visibleBest(column)
+
+						return Promise.resolve({
+							data: best === null ? null : {[column]: best},
+							error: options.selectError ?? null,
+						})
+					},
 					eq: (column: string, value: unknown) => {
 						query.column = column
 						query.value = value
@@ -64,7 +126,12 @@ function createFakeClient(options: FakeOptions = {}) {
 					// PostgREST es "thenable": la consulta se dispara al esperarla.
 					then: (resolve: (value: unknown) => void) => {
 						const rows = options.rowsByTable?.[table] ?? options.rows ?? []
-						const settle = () => resolve({data: rows, error: options.selectError ?? null})
+						const settle = () =>
+							resolve({
+								data: rows,
+								count: options.count ?? null,
+								error: options.selectError ?? null,
+							})
 						const delay = options.delaysByTable?.[table] ?? options.selectDelayMs
 
 						if (delay === undefined) settle()
@@ -77,7 +144,7 @@ function createFakeClient(options: FakeOptions = {}) {
 		}),
 	}
 
-	return {client, inserts, queries}
+	return {client, inserts, events, queries}
 }
 
 /**
@@ -292,5 +359,126 @@ describe('cargar la clasificación', () => {
 		expect(store.loadedDifficulty).toBe('hard')
 		// Lo que de verdad importa: la respuesta lenta no pisó a la vigente.
 		expect(store.entries.map((entry) => entry.displayName)).toEqual(['Vigente'])
+	})
+})
+
+describe('posición y récord personal', () => {
+	/**
+	 * El orden es lo que hace correcto a `submitResult`: la marca previa se lee
+	 * ANTES de insertar. Al revés, la vista ya incluiría la partida recién
+	 * guardada y se compararía consigo misma, así que nunca habría un récord.
+	 */
+	it('lee la marca previa antes de guardar', async () => {
+		const fake = createFakeClient({personalBestRow: {time_ms: 50_000}, count: 2})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+
+		// La marca personal se consulta primero; el insert viene después.
+		expect(fake.events.slice(0, 2)).toEqual(['personal-best', 'insert'])
+		expect(store.lastVerdict).toBe('improved')
+	})
+
+	it('calcula la posición como los que te superan más uno', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 2})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+
+		expect(store.position).toBe(3)
+	})
+
+	it('la posición se consulta sin traer filas', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 0})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+
+		const countQuery = fake.queries.find((query) => query.head === true)
+
+		expect(countQuery?.compare).toEqual({op: 'lt', column: 'time_ms', value: 40_000})
+	})
+
+	/** En Precisión gana el ritmo mayor, así que se cuentan los que lo superan. */
+	it('en Precisión cuenta por ritmo descendente', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 1})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'precision', verbsMatched: 10, timeMs: 60_000}))
+
+		const countQuery = fake.queries.find((query) => query.head === true)
+
+		expect(countQuery?.compare).toEqual({op: 'gt', column: 'pace', value: 10})
+	})
+
+	/**
+	 * El jugador no puede contarse a sí mismo. La vista calcula el ritmo con
+	 * `numeric` de Postgres y el cliente con coma flotante, así que su propia fila
+	 * podía salir mínimamente mayor y cumplía el «me superan»: quedaba segundo
+	 * estando solo en la tabla.
+	 */
+	it('excluye la fila propia al contar quién te supera', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 0})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'precision', verbsMatched: 10, timeMs: 60_000}))
+
+		const countQuery = fake.queries.find((query) => query.head === true)
+
+		expect(countQuery?.excluded).toEqual({column: 'user_id', value: 'uuid-1'})
+		expect(store.position).toBe(1)
+	})
+
+	/** La primera partida no es un récord: no había nada que batir. */
+	it('marca la primera partida como primera, no como récord', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 0})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+
+		expect(store.lastVerdict).toBe('first')
+	})
+
+	it('conserva la marca previa si la partida no la mejora', async () => {
+		const fake = createFakeClient({personalBestRow: {time_ms: 30_000}, count: 1})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+
+		expect(store.lastVerdict).toBe('not-improved')
+		// La posición se calcula con la MEJOR marca, no con la de esta partida.
+		expect(store.personalBestMetric).toBe(30_000)
+	})
+
+	/** Como invitado no hay puesto que mostrar: la partida no existe para nadie. */
+	it('no consulta posición como invitado', async () => {
+		const fake = createFakeClient({count: 5})
+		const store = await loadStore(fake.client, null)
+
+		expect(await store.submitResult(makeResult({mode: 'target', status: 'won'}))).toBe('guest')
+		expect(store.position).toBeNull()
+	})
+
+	it('no consulta posición si la partida no se guarda', async () => {
+		const fake = createFakeClient({count: 5})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		expect(await store.submitResult(makeResult({mode: 'target', status: 'lost'}))).toBe(
+			'not-persisted',
+		)
+		expect(store.position).toBeNull()
+	})
+
+	it('olvida la posición de la partida anterior al empezar otra', async () => {
+		const fake = createFakeClient({personalBestRow: null, count: 0})
+		const store = await loadStore(fake.client, 'uuid-1')
+
+		await store.submitResult(makeResult({mode: 'target', status: 'won', timeMs: 40_000}))
+		expect(store.position).toBe(1)
+
+		store.clearStanding()
+
+		expect(store.position).toBeNull()
+		expect(store.lastVerdict).toBeNull()
 	})
 })

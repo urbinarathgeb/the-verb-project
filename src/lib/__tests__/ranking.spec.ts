@@ -1,8 +1,12 @@
 import {describe, expect, it} from 'vitest'
 import {
+	bestMetricAfter,
 	calculatePace,
+	compareWithPersonalBest,
+	isBetterMetric,
 	isEligibleForRanking,
 	isPersistable,
+	rankingMetric,
 	toRankingEntries,
 	type RankingRow,
 } from '../ranking'
@@ -278,5 +282,91 @@ describe('toRankingEntries', () => {
 
 	it('devuelve una lista vacía sin filas', () => {
 		expect(toRankingEntries([], 'target')).toEqual([])
+	})
+})
+
+describe('rankingMetric', () => {
+	it('en Contrarreloj clasifica el tiempo', () => {
+		expect(rankingMetric(makeResult({mode: 'target', status: 'won', timeMs: 42_000}))).toBe(42_000)
+	})
+
+	it('en Precisión clasifica el ritmo', () => {
+		const result = makeResult({mode: 'precision', verbsMatched: 10, timeMs: 60 * SECOND})
+
+		expect(rankingMetric(result)).toBe(10)
+	})
+})
+
+describe('isBetterMetric', () => {
+	/** La dirección se invierte por modo, y ahí es donde es fácil equivocarse. */
+	it('en Contrarreloj gana el tiempo menor', () => {
+		expect(isBetterMetric(40_000, 50_000, 'target')).toBe(true)
+		expect(isBetterMetric(50_000, 40_000, 'target')).toBe(false)
+	})
+
+	it('en Precisión gana el ritmo mayor', () => {
+		expect(isBetterMetric(14, 9, 'precision')).toBe(true)
+		expect(isBetterMetric(9, 14, 'precision')).toBe(false)
+	})
+
+	it('empatar no es mejorar en ningún modo', () => {
+		expect(isBetterMetric(40_000, 40_000, 'target')).toBe(false)
+		expect(isBetterMetric(12, 12, 'precision')).toBe(false)
+	})
+})
+
+describe('compareWithPersonalBest', () => {
+	/**
+	 * La primera marca no es un récord: no había nada que batir, y celebrarlo
+	 * sonaría a premio vacío. Pero tampoco merece silencio, y por eso hay un
+	 * veredicto propio en vez de un booleano.
+	 */
+	it('distingue la primera marca de un récord', () => {
+		const result = makeResult({mode: 'target', status: 'won', timeMs: 40_000})
+
+		expect(compareWithPersonalBest(result, null)).toBe('first')
+		expect(compareWithPersonalBest(result, 50_000)).toBe('improved')
+	})
+
+	it('no celebra una marca peor ni un empate', () => {
+		const result = makeResult({mode: 'target', status: 'won', timeMs: 50_000})
+
+		expect(compareWithPersonalBest(result, 40_000)).toBe('not-improved')
+		expect(compareWithPersonalBest(result, 50_000)).toBe('not-improved')
+	})
+
+	it('mejora en Precisión con más ritmo', () => {
+		const result = makeResult({mode: 'precision', verbsMatched: 14, timeMs: 60 * SECOND})
+
+		expect(compareWithPersonalBest(result, 9)).toBe('improved')
+	})
+
+	/** Una partida que no clasifica no puede ser récord de nada. */
+	it('no es récord si la partida no entra en el ranking', () => {
+		const perdida = makeResult({mode: 'target', status: 'lost', timeMs: 1000})
+		const floja = makeResult({mode: 'precision', verbsMatched: 1})
+
+		expect(compareWithPersonalBest(perdida, null)).toBe('not-eligible')
+		expect(compareWithPersonalBest(floja, 999)).toBe('not-eligible')
+	})
+})
+
+describe('bestMetricAfter', () => {
+	it('sin marca previa, la marca es la de esta partida', () => {
+		const result = makeResult({mode: 'target', status: 'won', timeMs: 40_000})
+
+		expect(bestMetricAfter(result, null)).toBe(40_000)
+	})
+
+	it('se queda con el mejor de los dos en Contrarreloj', () => {
+		const result = makeResult({mode: 'target', status: 'won', timeMs: 50_000})
+
+		expect(bestMetricAfter(result, 40_000)).toBe(40_000)
+	})
+
+	it('se queda con el mejor de los dos en Precisión', () => {
+		const result = makeResult({mode: 'precision', verbsMatched: 9, timeMs: 60 * SECOND})
+
+		expect(bestMetricAfter(result, 14)).toBe(14)
 	})
 })

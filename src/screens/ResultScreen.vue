@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {computed, onBeforeUnmount, onMounted} from 'vue'
+import {computed, onBeforeUnmount, onMounted, ref} from 'vue'
 import {useRouter} from 'vue-router'
 import ChoiceButton from '@/components/ChoiceButton.vue'
 import {useGameEngine} from '@/composables/useGameEngine'
@@ -17,7 +17,7 @@ import {formatDuration, formatPace} from '@/lib/format'
  */
 const router = useRouter()
 const engine = useGameEngine()
-const {lastSaveOutcome, saveResult} = useRanking()
+const {lastSaveOutcome, position, personalBestMetric, lastVerdict, submitResult} = useRanking()
 
 const result = computed(() => engine.result.value)
 
@@ -101,43 +101,105 @@ const saveNote = computed(() => {
 	}
 })
 
+/**
+ * El puesto sólo se anuncia cuando hay algo que celebrar.
+ *
+ * Decirle «quedaste 7.º» a quien acaba de hacer una partida mediocre no aporta
+ * nada y suena a reproche; lo útil entonces es ver su propia marca para saber
+ * cuánto le faltó. El puesto se reserva para el récord y la primera marca.
+ */
+const showsPosition = computed(
+	() =>
+		position.value !== null && (lastVerdict.value === 'improved' || lastVerdict.value === 'first'),
+)
+
+/** Mejor marca del jugador en este modo y nivel, ya formateada. */
+const personalBestLabel = computed(() => {
+	const metric = personalBestMetric.value
+	const current = result.value
+
+	if (metric === null || current === null) return null
+
+	return current.mode === 'target' ? formatDuration(metric) : formatPace(metric)
+})
+
+/**
+ * Mensaje de récord, o `null` si no hay nada que celebrar.
+ *
+ * La primera marca no se anuncia como récord: no había nada que batir, y decir
+ * «¡nuevo récord!» sonaría a premio vacío. Pero tampoco merece silencio.
+ */
+const recordNote = computed(() => {
+	switch (lastVerdict.value) {
+		case 'improved':
+			return '¡Nuevo récord personal en este nivel!'
+		case 'first':
+			return 'Tu primera marca en este nivel.'
+		default:
+			return null
+	}
+})
+
+/**
+ * `true` cuando el jugador se marcha por su propio pie.
+ *
+ * Distingue salir de la pantalla de que la pantalla se remonte, y es lo que
+ * permite descartar la partida sólo en el primer caso.
+ */
+const isLeaving = ref(false)
+
+function leaveTo(navigate: () => void): void {
+	isLeaving.value = true
+	navigate()
+}
+
 function goToRanking(): void {
-	router.push({name: 'ranking'})
+	leaveTo(() => void router.push({name: 'ranking'}))
 }
 
 function playAgain(): void {
 	const current = result.value
 	if (current === null) return
 
-	router.push({
-		name: 'play',
-		params: {mode: current.mode, difficulty: current.difficulty},
-	})
+	leaveTo(
+		() =>
+			void router.push({
+				name: 'play',
+				params: {mode: current.mode, difficulty: current.difficulty},
+			}),
+	)
 }
 
 function goHome(): void {
-	router.push({name: 'home'})
+	leaveTo(() => void router.push({name: 'home'}))
 }
 
 onMounted(() => {
-	// Entrar por URL a `/result` sin haber jugado no muestra nada útil.
-	if (result.value === null) {
-		void router.replace({name: 'home'})
-		return
-	}
+	/*
+	 * Sin resultado se muestra un estado vacío, NO se redirige.
+	 *
+	 * Antes había aquí un `router.replace({name:'home'})` mudo, y como esta
+	 * pantalla se borra el resultado al salir, cualquier remontaje —una recarga,
+	 * entrar por URL, volver atrás— expulsaba al jugador al menú sin decir nada.
+	 * Era exactamente la sensación de «terminé la partida y volví al menú».
+	 */
+	if (result.value === null) return
 
 	/*
 	 * El guardado no bloquea la pantalla: el resultado ya está calculado y se
 	 * muestra al instante, y la nota sobre la persistencia aparece cuando la
 	 * escritura termine. Que falle la red no debe impedir ver la partida.
 	 */
-	void saveResult(result.value)
+	void submitResult(result.value)
 })
 
-// La partida ya se mostró: se descarta al salir para no arrastrarla a la
-// siguiente sesión de juego.
+/*
+ * La partida se descarta al salir para no arrastrarla a la siguiente, pero sólo
+ * cuando el jugador se va por su propio pie. `isLeaving` lo marca; sin esa
+ * guarda, un remontaje de esta pantalla se quedaría sin resultado que mostrar.
+ */
 onBeforeUnmount(() => {
-	engine.resetGame()
+	if (isLeaving.value) engine.resetGame()
 })
 </script>
 
@@ -154,7 +216,25 @@ onBeforeUnmount(() => {
 				<dd class="result-metric-value">{{ metric.value }}</dd>
 				<dd v-if="metric.unit" class="result-metric-unit">{{ metric.unit }}</dd>
 			</div>
+
+			<!--
+				Sólo aparece si se conoce. Como invitado, sin backend o si falla la
+				consulta, se calla en lugar de mostrar un dato inventado.
+			-->
+			<div v-if="showsPosition" class="result-metric brutal-card result-position">
+				<dt class="result-metric-label">Posición</dt>
+				<dd class="result-metric-value">{{ position }}º</dd>
+				<dd class="result-metric-unit">en la clasificación</dd>
+			</div>
+
+			<div v-else-if="personalBestLabel !== null" class="result-metric brutal-card result-position">
+				<dt class="result-metric-label">Tu mejor marca</dt>
+				<dd class="result-metric-value">{{ personalBestLabel }}</dd>
+				<dd class="result-metric-unit">en este nivel</dd>
+			</div>
 		</dl>
+
+		<p v-if="recordNote !== null" class="result-record">{{ recordNote }}</p>
 
 		<p v-if="rankingNote" class="result-note">{{ rankingNote }}</p>
 
@@ -168,6 +248,24 @@ onBeforeUnmount(() => {
 			<ChoiceButton variant="primary" @click="playAgain">Jugar otra vez</ChoiceButton>
 			<ChoiceButton variant="secondary" @click="goToRanking">Clasificación</ChoiceButton>
 			<ChoiceButton variant="ghost" @click="goHome">Volver al menú</ChoiceButton>
+		</div>
+	</section>
+
+	<!--
+		Sin partida en memoria. Ocurre al recargar aquí o al entrar por URL. Antes
+		esto redirigía al menú en silencio, que se percibía como que la partida se
+		había perdido sin explicación.
+	-->
+	<section v-else class="result">
+		<div class="result-header brutal-card result-loss">
+			<h1 class="result-title">No hay partida</h1>
+			<p class="result-context">Nada que mostrar aquí todavía</p>
+		</div>
+		<p class="result-note">
+			El resultado de una partida sólo vive mientras la ves. Juega una y vuelve.
+		</p>
+		<div class="result-actions">
+			<ChoiceButton variant="primary" @click="goHome">Volver al menú</ChoiceButton>
 		</div>
 	</section>
 </template>
@@ -253,6 +351,17 @@ onBeforeUnmount(() => {
 	font-size: var(--text-caption);
 	margin: 0;
 	opacity: 0.7;
+}
+
+.result-record {
+	padding: calc(var(--spacing-gutter) / 3) calc(var(--spacing-gutter) / 2);
+	border: 3px solid var(--color-ink);
+	background-color: var(--color-cyan);
+	font-family: var(--font-display);
+	font-size: var(--text-label-bold);
+	text-transform: uppercase;
+	letter-spacing: 0.04em;
+	text-align: center;
 }
 
 .result-note,
