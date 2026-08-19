@@ -33,7 +33,9 @@ El resultado de cada jugada se anuncia a los lectores de pantalla, ya que de otr
 
 En móvil, el acierto y el fallo se acompañan de una **vibración corta**, que también se omite si se ha pedido reducir movimiento.
 
-Si el tablero no cabe a lo alto —el nivel difícil en un móvil pequeño, o cualquier nivel en horizontal—, se desplaza en lugar de encoger las celdas: el área táctil de 44 px no se sacrifica nunca.
+Si el tablero no cabe a lo alto —en horizontal, por ejemplo—, se desplaza en lugar de encoger las celdas: el área táctil de 44 px no se sacrifica nunca.
+
+**Cada ficha de la columna de presente lleva debajo su significado en español.** Sólo esa columna: si las tres lo mostraran, emparejar se reduciría a buscar «beber» tres veces y el juego dejaría de pedirte que sepas las formas. Ahí no filtra nada, porque saber que `drink` es «beber» no te dice qué celda de pasado le toca. El significado aparece también en el repaso de errores, en la lista de progreso y en el enunciado del Dojo.
 
 ## Modos
 
@@ -55,9 +57,11 @@ En **Supervivencia** el primer error termina la ronda de inmediato. La métrica 
 | --- | --- | --- | --- | --- | --- |
 | Fácil | 49 (básicos) | 6 | 16 | 90 s | −2 s |
 | Medio | 86 (básicos + intermedios) | 8 | 20 | 90 s | −2 s |
-| Difícil | 106 (catálogo completo) | 10 | 24 | 100 s | −3 s |
+| Difícil | 57 (intermedios + avanzados) | 8 | 24 | 100 s | −3 s |
 
 Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el prototipo.
+
+Fácil y medio son acumulativos: subir de nivel añade verbos sin quitar ninguno. **Difícil no**: deja fuera los 49 básicos, porque un nivel difícil que te pregunta `be` y `go` sólo es difícil por el tamaño del tablero. Comparte las 8 celdas de medio y exige 24 aciertos en 100 s, es decir 4,2 segundos por acierto frente a los 4,5 de medio.
 
 ## Pantallas disponibles
 
