@@ -22,8 +22,13 @@ const props = withDefaults(
 		 * atrás inicial o el resultado de una partida.
 		 */
 		dismissible?: boolean
+		/**
+		 * Enfoca el panel en lugar del primer botón al abrirse. Para diálogos que
+		 * son sobre todo texto: si no, el scroll salta al control del final.
+		 */
+		focusPanel?: boolean
 	}>(),
-	{dismissible: false},
+	{dismissible: false, focusPanel: false},
 )
 
 const emit = defineEmits<{close: []}>()
@@ -33,6 +38,7 @@ const isOpen = computed(() => props.open)
 
 useFocusTrap(panel, isOpen, {
 	onEscape: props.dismissible ? () => emit('close') : undefined,
+	focusContainer: props.focusPanel,
 })
 
 // Asocia el título con el diálogo sin depender de un id fijo, que se repetiría

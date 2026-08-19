@@ -26,6 +26,15 @@ const FOCUSABLE_SELECTOR = [
 export interface UseFocusTrapOptions {
 	/** Se invoca al pulsar `Esc`. Si se omite, `Esc` no hace nada. */
 	onEscape?: () => void
+	/**
+	 * Enfoca el contenedor en lugar del primer control al abrirse.
+	 *
+	 * Es lo indicado cuando el diálogo es sobre todo texto: enfocar el primer
+	 * control arrastra el scroll hasta él, y con contenido largo el modal se abre
+	 * con el título fuera de pantalla. Enfocar el contenedor deja el contenido
+	 * desde el principio y el lector de pantalla lo anuncia igual.
+	 */
+	focusContainer?: boolean
 }
 
 export function useFocusTrap(
@@ -33,7 +42,7 @@ export function useFocusTrap(
 	isActive: Ref<boolean>,
 	options: UseFocusTrapOptions = {},
 ): void {
-	const {onEscape} = options
+	const {onEscape, focusContainer = false} = options
 
 	/** Elemento que tenía el foco antes de abrirse el modal. */
 	let previouslyFocused: HTMLElement | null = null
@@ -90,7 +99,9 @@ export function useFocusTrap(
 			const [first] = focusableElements()
 			// Si el modal no tiene controles (la cuenta atrás, por ejemplo), se
 			// enfoca el propio panel para que el lector anuncie su contenido.
-			;(first ?? container.value)?.focus()
+			const target = focusContainer ? container.value : (first ?? container.value)
+
+			target?.focus()
 		})
 	}
 
