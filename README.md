@@ -19,7 +19,7 @@ Pulsar otra celda de una columna que ya tenía selección la reemplaza; pulsar l
 
 La reposición **tarda unos segundos a propósito**: durante esa espera puedes seguir acertando y el tablero se va vaciando, así que encadenar aciertos se nota. Y las tríadas nuevas ocupan sólo huecos: **ninguna celda que ya estuviera en el tablero se mueve de sitio**.
 
-Durante la partida, el aspa del marcador —o `Esc`— pide confirmación para abandonar y volver al menú. Y si mandas la pestaña a segundo plano, **la partida se pausa y el reloj se detiene**: se reanuda cuando tú lo digas, no al volver. Una notificación o una llamada ya no arruinan una partida.
+Durante la partida, el aspa del marcador —o `Esc`— pide confirmación para abandonar y volver a la portada. Y si mandas la pestaña a segundo plano, **la partida se pausa y el reloj se detiene**: se reanuda cuando tú lo digas, no al volver. Una notificación o una llamada ya no arruinan una partida.
 
 Además espera a que haya al menos tres huecos antes de reponer. Con uno solo, la tríada nueva caería justo donde estaba la que acabas de resolver, y eso te la regalaría. Esa espera **no es indefinida**: si dejas de acertar, pasado un margen se repone igual, porque quedarse con el tablero corto para siempre sería peor. Y si encadenas tantos aciertos que se queda casi desierto, la reposición se adelanta sola.
 
@@ -61,13 +61,14 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 
 ## Pantallas disponibles
 
-- `/` — menú: elegir modo y nivel, con un «¿Cómo se juega?» que explica el juego en tres bloques.
+- `/` — portada: cuánto llevas aprendido, el acceso a jugar y un «¿Cómo se juega?» que explica el juego en tres bloques.
+- `/setup` — elegir modo y nivel. Los tres modos muestran su regla a la vez, y la elección se recuerda mientras dure la sesión.
 - `/play/:mode/:difficulty` — partida, con cuenta atrás inicial de 3 segundos y modal de desenlace al terminar.
 - `/practice/:difficulty` — Dojo, sin reloj.
 - `/result` — desenlace con las métricas del modo jugado y, si hubo fallos, un repaso de cada uno con las formas correctas. Si bates tu marca, la posición en la clasificación; si no, tu mejor marca en ese nivel.
 - `/ranking` — clasificación por modo y nivel.
 - `/progress` — qué verbos dominas y cuáles se te resisten, con lo peor primero.
-- `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige al menú.
+- `/auth/callback` — vuelta desde Google al iniciar sesión. Es una pantalla de tránsito: comprueba el acceso y redirige a la portada.
 - `/styleguide` — guía visual del sistema de diseño. **Sólo en desarrollo**, no entra en el bundle de producción.
 
 ## Clasificación
@@ -75,6 +76,8 @@ Los valores viven en `src/data/levels.ts` y se espera ajustarlos tras jugar el p
 Es pública: se puede consultar sin cuenta. Hay **seis tablas** —dos modos por tres niveles— porque comparar un tiempo de nivel fácil con uno de difícil no significaría nada: cambian el tamaño del tablero y el objetivo.
 
 Al terminar una partida, el desenlace se anuncia **sobre el propio tablero**, que queda congelado para que se vea qué faltaba. Desde ahí se pasa al resultado, que con sesión iniciada muestra en qué puesto has quedado y avisa si has batido tu marca en ese modo y nivel.
+
+En esa pantalla, **lo que fallaste se ve sin desplazarse**, justo debajo de las métricas y antes de los botones: qué tres celdas elegiste y cuáles son las formas correctas de los verbos implicados. Es el momento en que el error significa algo, así que no está escondido tras un botón. Si hubo más de tres fallos, se ven los tres primeros y el resto se abre en una lista completa.
 
 Cada tabla muestra el **mejor resultado de cada jugador**, no todas sus partidas, para que quien más juegue no copie la tabla con sus propios intentos. «Mejor» significa cosas distintas por modo: en Contrarreloj el menor tiempo, en Supervivencia el mayor ritmo en verbos por minuto. Los empates comparten posición.
 
@@ -94,7 +97,7 @@ Una partida de Supervivencia floja se guarda igual porque forma parte de tu hist
 
 Se puede jugar **sin cuenta**, y es un modo de primera clase: todos los modos, todos los niveles y el Dojo funcionan igual. Lo único que cambia es que el progreso vive en memoria y se pierde al recargar, y que las partidas no entran al ranking.
 
-Iniciar sesión con Google se ofrece desde el menú. Si la aplicación arranca sin credenciales de Supabase, el acceso ni se muestra: no tendría a dónde ir, así que la app se comporta como si fuera de invitado permanente en lugar de ofrecer un botón que falla.
+Iniciar sesión con Google se ofrece desde la portada. Si la aplicación arranca sin credenciales de Supabase, el acceso ni se muestra: no tendría a dónde ir, así que la app se comporta como si fuera de invitado permanente en lugar de ofrecer un botón que falla.
 
 Al cerrar sesión se borra el progreso acumulado en memoria, para que no quede atribuido a quien siga jugando en el mismo navegador.
 
@@ -106,7 +109,7 @@ Lo que se manda son **incrementos**, no totales: «suma un acierto al verbo 7».
 
 Lo practicado **como invitado no se sube** al iniciar sesión después: no se pidió atribuírselo a esa cuenta.
 
-Todo eso se ve en `/progress`, accesible desde el menú: cuántos verbos dominas, cuántos has tocado y tu porcentaje global, más la lista de los practicados **ordenada por lo que peor se te da**. Un verbo cuenta como dominado con al menos 3 aciertos y un 80 % de acierto: sólo el porcentaje sería frágil con tres opciones, y sólo el número premiaría insistir hasta acertar.
+Todo eso se ve en `/progress`, accesible desde la portada, que además adelanta el resumen: cuántos verbos dominas, cuántos has tocado y tu porcentaje global, más la lista de los practicados **ordenada por lo que peor se te da**. Un verbo cuenta como dominado con al menos 3 aciertos y un 80 % de acierto: sólo el porcentaje sería frágil con tres opciones, y sólo el número premiaría insistir hasta acertar.
 
 ## Instalarla como aplicación
 
