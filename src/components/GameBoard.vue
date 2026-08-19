@@ -110,12 +110,11 @@ function handleKeydown(event: KeyboardEvent): void {
 			:accent="COLUMN_ACCENTS[form]"
 		>
 			<VerbCell
-				v-for="(cell, index) in columns[form]"
-				:key="cell.id"
+				v-for="(cell, row) in columns[form]"
+				:key="row"
 				:cell="cell"
 				:status="cellStatus(cell)"
 				:selectable="isCellSelectable(cell)"
-				:index="index"
 				@select="handleSelect"
 			/>
 		</BoardColumn>

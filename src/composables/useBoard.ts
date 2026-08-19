@@ -4,7 +4,7 @@ import {
 	createEmptySelection,
 	getSelectedCells,
 	isMatchingTriad,
-	replaceTriad,
+	refillSlots,
 } from '@/lib/board'
 import type {Rng} from '@/lib/shuffle'
 import type {Cell, CellId, Columns, Selection, SelectionOutcome} from '@/types/game'
@@ -41,10 +41,18 @@ export interface UseBoardReturn {
 	errorCellIds: ComputedRef<readonly CellId[]>
 	/** Verbos acertados, en orden de resolución. Su longitud es el contador de aciertos. */
 	resolvedVerbIds: ComputedRef<readonly number[]>
-	/** Ids de los verbos presentes en el tablero, sin orden significativo. */
+	/** Ids de los verbos aún por emparejar, sin orden significativo. */
 	visibleVerbIds: ComputedRef<number[]>
-	/** Número de tríadas visibles. Coincide con la altura de cada columna. */
+	/**
+	 * Tríadas que quedan por emparejar.
+	 *
+	 * **No es la altura de la columna.** Desde la reposición diferida, una celda
+	 * acertada se queda en su sitio atenuada hasta que la sustituyen, así que la
+	 * columna mide siempre lo mismo mientras el número de tríadas jugables baja.
+	 */
 	visibleCount: ComputedRef<number>
+	/** Casillas liberadas por aciertos y aún sin reponer. */
+	vacatedCount: ComputedRef<number>
 	/** `true` cuando ya no quedan verbos para reponer y el tablero empezará a reducirse. */
 	isPoolExhausted: ComputedRef<boolean>
 	/** `true` cuando no queda ninguna celda: el tablero se resolvió por completo. */
@@ -61,6 +69,11 @@ export interface UseBoardReturn {
 	clearError: () => void
 	/** Vacía la selección sin validar. Útil al pausar o abandonar la partida. */
 	clearSelection: () => void
+	/**
+	 * Mete una tríada del pool en las casillas libres. La agenda el motor de juego.
+	 * Devuelve `false` si no se llegó a colocar nada.
+	 */
+	refill: () => boolean
 }
 
 /** Tablero vacío, el estado antes del primer reparto (`GameStatus` en `idle`). */
@@ -92,11 +105,22 @@ export function useBoard(options: UseBoardOptions = {}): UseBoardReturn {
 	const errorCellIds = computed<readonly CellId[]>(() => errors.value)
 	const resolvedVerbIds = computed<readonly number[]>(() => resolved.value)
 
-	// La columna de presente basta para leer qué verbos hay en el tablero: las
-	// tres columnas contienen siempre el mismo conjunto de verbos, sólo difieren
-	// en el orden.
-	const visibleVerbIds = computed(() => boardColumns.value.present.map((cell) => cell.verbId))
-	const visibleCount = computed(() => boardColumns.value.present.length)
+	/*
+	 * La columna de presente basta para leer qué verbos quedan por emparejar.
+	 *
+	 * Un verbo sin resolver está SIEMPRE en las tres columnas, porque sólo entra al
+	 * tablero de tríada en tríada y sólo se sobrescribe una vez resuelto. Lo que sí
+	 * puede diferir entre columnas es qué celdas resueltas quedan sin reponer, ya
+	 * que cada reposición sustituye una fila distinta en cada columna — y eso no
+	 * afecta al recuento de lo jugable.
+	 */
+	const unresolvedCells = computed(() =>
+		boardColumns.value.present.filter((cell) => !resolved.value.includes(cell.verbId)),
+	)
+
+	const visibleVerbIds = computed(() => unresolvedCells.value.map((cell) => cell.verbId))
+	const visibleCount = computed(() => unresolvedCells.value.length)
+	const vacatedCount = computed(() => boardColumns.value.present.length - visibleCount.value)
 	const isPoolExhausted = computed(() => remainingPool.value.length === 0)
 	const isCleared = computed(() => visibleCount.value === 0)
 	const matchedCount = computed(() => resolved.value.length)
@@ -121,14 +145,37 @@ export function useBoard(options: UseBoardOptions = {}): UseBoardReturn {
 		currentSelection.value = createEmptySelection()
 	}
 
-	/** Saca del tablero la tríada acertada y repone otra si queda pool. */
+	/**
+	 * Da por resuelta la tríada acertada.
+	 *
+	 * **No la retira del tablero.** Sus celdas se quedan donde están, atenuadas y
+	 * no pulsables, hasta que una reposición diferida las sustituya. Así el tablero
+	 * se vacía visiblemente durante una racha y ninguna celda ajena se mueve
+	 * (`PLAN.md`, Bitácora, D8).
+	 */
 	function resolveTriad(verbId: number): void {
-		const [incoming, ...rest] = remainingPool.value
-
-		boardColumns.value = replaceTriad(boardColumns.value, verbId, incoming ?? null, rng)
-		remainingPool.value = rest
 		resolved.value = [...resolved.value, verbId]
 		currentSelection.value = createEmptySelection()
+	}
+
+	/**
+	 * Mete una tríada del pool en las casillas libres.
+	 *
+	 * El verbo sólo se consume si se llegó a colocar: si no había hueco en alguna
+	 * columna, `refillSlots` devuelve el tablero intacto y el pool se conserva para
+	 * el siguiente intento, en lugar de perder un verbo en silencio.
+	 */
+	function refill(): boolean {
+		const [incoming, ...rest] = remainingPool.value
+		if (incoming === undefined) return false
+
+		const next = refillSlots(boardColumns.value, resolved.value, incoming, rng)
+		if (next === boardColumns.value) return false
+
+		boardColumns.value = next
+		remainingPool.value = rest
+
+		return true
 	}
 
 	function select(cell: Cell): SelectionOutcome {
@@ -173,6 +220,7 @@ export function useBoard(options: UseBoardOptions = {}): UseBoardReturn {
 		resolvedVerbIds,
 		visibleVerbIds,
 		visibleCount,
+		vacatedCount,
 		isPoolExhausted,
 		isCleared,
 		matchedCount,
@@ -181,5 +229,6 @@ export function useBoard(options: UseBoardOptions = {}): UseBoardReturn {
 		select,
 		clearError,
 		clearSelection,
+		refill,
 	}
 }

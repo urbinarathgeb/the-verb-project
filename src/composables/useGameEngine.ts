@@ -34,6 +34,7 @@ export function useGameEngine() {
 		errorCellIds,
 		resolvedVerbIds,
 		visibleCount,
+		vacatedCount,
 		isCleared,
 		// Marcadores
 		matchedCount,
@@ -82,7 +83,9 @@ export function useGameEngine() {
 		columns,
 		selection,
 		errorCellIds,
+		resolvedVerbIds,
 		visibleCount,
+		vacatedCount,
 		isCleared,
 		cellStatus,
 		isCellSelectable,

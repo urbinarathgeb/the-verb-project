@@ -1,6 +1,6 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 import {createPinia, setActivePinia} from 'pinia'
-import {useGameStore} from '../game'
+import {REFILL_APPEAR_MS, useGameStore} from '../game'
 import {MIN_MATCHES_FOR_RANKING, getLevelConfig} from '@/data/levels'
 import {getVerbsForDifficulty} from '@/data/verbs'
 import {VERB_FORMS, type VerbForm} from '@/types/verb'
@@ -30,9 +30,32 @@ function cellOf(store: Store, verbId: number, form: VerbForm): Cell {
 	return cell
 }
 
-/** Ids de los verbos visibles en el tablero. */
+/**
+ * Ids de los verbos que quedan por emparejar.
+ *
+ * Desde la reposición diferida no basta con leer la columna: las celdas ya
+ * acertadas se quedan en su sitio, atenuadas, hasta que las sustituyen.
+ */
 function visibleVerbIds(store: Store): number[] {
-	return store.columns.present.map((cell) => cell.verbId)
+	return store.columns.present
+		.filter((cell) => !store.resolvedVerbIds.includes(cell.verbId))
+		.map((cell) => cell.verbId)
+}
+
+/** Resuelve una tríada y deja pasar el retardo para que entre la reposición. */
+function solveAndRefill(store: Store, verbId: number): void {
+	solve(store, verbId)
+	advance((store.level?.refillDelayMs ?? 0) + REFILL_APPEAR_MS)
+}
+
+/** Resuelve `count` tríadas seguidas, esperando la reposición entre cada una. */
+function solveMany(store: Store, count: number): void {
+	for (let index = 0; index < count; index++) {
+		const [next] = visibleVerbIds(store)
+		if (next === undefined) return
+
+		solveAndRefill(store, next)
+	}
 }
 
 /** Resuelve la tríada de `verbId` seleccionando sus tres celdas. */
@@ -221,15 +244,132 @@ describe('useGameStore — jugadas', () => {
 		expect(outcome).toMatchObject({type: 'match', verbId})
 	})
 
-	it('el tablero repone la tríada acertada', () => {
+	/** La reposición es diferida: el hueco se ve durante `refillDelayMs`. */
+	it('el acierto deja un hueco en lugar de reponer al instante', () => {
 		const store = useGameStore()
+		const {boardSize} = getLevelConfig('easy')
 		store.startGame('target', 'easy')
 		const verbId = visibleVerbIds(store)[0] ?? 0
 
 		solve(store, verbId)
 
-		expect(store.visibleCount).toBe(getLevelConfig('easy').boardSize)
+		expect(store.visibleCount).toBe(boardSize - 1)
+		expect(store.vacatedCount).toBe(1)
 		expect(visibleVerbIds(store)).not.toContain(verbId)
+	})
+
+	/**
+	 * Con un solo hueco, las tres filas libres son exactamente las que dejó la
+	 * tríada resuelta: la entrante caería ahí y el jugador —que acaba de verlas
+	 * atenuarse juntas— sabría al instante que las tres nuevas son un verbo. Por
+	 * eso la reposición **queda en deuda** hasta que haya huecos suficientes.
+	 */
+	it('no repone mientras no haya huecos suficientes', () => {
+		const store = useGameStore()
+		const {boardSize, refillDelayMs} = getLevelConfig('easy')
+		store.startGame('target', 'easy')
+
+		solve(store, visibleVerbIds(store)[0] ?? 0)
+		advance(refillDelayMs + REFILL_APPEAR_MS)
+
+		expect(store.vacatedCount).toBe(1)
+		expect(store.visibleCount).toBe(boardSize - 1)
+	})
+
+	/**
+	 * Pero el mínimo **caduca**, y es imprescindible que caduque: cada acierto
+	 * genera una reposición y el tablero deja de pagarlas al bajar del mínimo, así
+	 * que un mínimo de G huecos dejaría el tablero fijo en N−(G−1) durante el resto
+	 * de la partida, oscilando sin volver a llenarse nunca.
+	 */
+	it('acaba reponiendo aunque no se alcance el mínimo, pasado el margen', () => {
+		const store = useGameStore()
+		const {boardSize, refillDelayMs, refillGraceMs} = getLevelConfig('easy')
+		store.startGame('target', 'easy')
+
+		solve(store, visibleVerbIds(store)[0] ?? 0)
+		advance(refillDelayMs + REFILL_APPEAR_MS + refillGraceMs)
+
+		expect(store.vacatedCount).toBe(0)
+		expect(store.visibleCount).toBe(boardSize)
+	})
+
+	/**
+	 * El caso que destapó el defecto: el tablero tiene que volver a llenarse.
+	 *
+	 * Se juega en Precisión porque Contrarreloj ganaría al alcanzar el objetivo y
+	 * cancelaría las reposiciones pendientes antes de poder comprobarlo.
+	 */
+	it('vuelve a su tamaño completo tras una racha larga', () => {
+		const store = useGameStore()
+		const {boardSize, refillDelayMs, refillGraceMs} = getLevelConfig('easy')
+		store.startGame('precision', 'easy')
+
+		for (let index = 0; index < 12; index++) {
+			const next = visibleVerbIds(store)[0]
+			if (next === undefined) break
+
+			solve(store, next)
+			advance(refillDelayMs)
+		}
+
+		// Se deja reposar lo suficiente para que caduquen todas las deudas.
+		advance((refillGraceMs + REFILL_APPEAR_MS) * boardSize)
+
+		expect(store.vacatedCount).toBe(0)
+		expect(store.visibleCount).toBe(boardSize)
+	})
+
+	/** Encadenar aciertos vacía el tablero hasta llegar al mínimo de huecos. */
+	it('los aciertos encadenados vacían el tablero antes de reponerse', () => {
+		const store = useGameStore()
+		const {boardSize, refillMinVacancies} = getLevelConfig('easy')
+		store.startGame('target', 'easy')
+
+		for (let index = 0; index < refillMinVacancies - 1; index++) {
+			solve(store, visibleVerbIds(store)[0] ?? 0)
+		}
+
+		expect(store.visibleCount).toBe(boardSize - (refillMinVacancies - 1))
+	})
+
+	/**
+	 * Con el tablero casi desierto se adelanta la reposición más antigua sin
+	 * esperar a su retardo, para que no se quede vacío durante una racha larga.
+	 */
+	it('adelanta la reposición cuando el tablero se vacía demasiado', () => {
+		const store = useGameStore()
+		const {boardSize, refillForceVacancies} = getLevelConfig('easy')
+		store.startGame('target', 'easy')
+
+		// Se acierta hasta el umbral SIN dejar vencer ningún retardo de reposición.
+		for (let index = 0; index < refillForceVacancies; index++) {
+			const next = visibleVerbIds(store)[0]
+			if (next === undefined) break
+			solve(store, next)
+		}
+
+		advance(REFILL_APPEAR_MS)
+
+		// Sin la regla, aquí quedarían `refillForceVacancies` huecos y ninguna
+		// reposición, porque el retardo no ha vencido para ninguna.
+		expect(store.vacatedCount).toBeLessThan(refillForceVacancies)
+		expect(store.visibleCount).toBeGreaterThan(boardSize - refillForceVacancies)
+	})
+
+	/** Una partida terminada no puede seguir repoblando el tablero por detrás. */
+	it('cancela las reposiciones pendientes al terminar', () => {
+		const store = useGameStore()
+		const {refillDelayMs} = getLevelConfig('easy')
+		store.startGame('target', 'easy')
+
+		solve(store, visibleVerbIds(store)[0] ?? 0)
+		store.finish('lost')
+
+		const before = store.visibleCount
+		advance(refillDelayMs * 3)
+
+		expect(store.visibleCount).toBe(before)
 	})
 
 	it('`clearError` retira el feedback del último fallo', () => {
@@ -435,15 +575,6 @@ describe('useGameStore — reinicio', () => {
 	})
 })
 
-/** Resuelve `count` tríadas correctas seguidas, tomando siempre la primera visible. */
-function solveMany(store: Store, count: number): void {
-	for (let done = 0; done < count; done++) {
-		const verbId = visibleVerbIds(store)[0]
-		if (verbId === undefined) break
-		solve(store, verbId)
-	}
-}
-
 describe('Modo Objetivo — penalización por error', () => {
 	it('un fallo descuenta la penalización del nivel', () => {
 		const store = useGameStore()
@@ -572,13 +703,18 @@ describe('Modo Objetivo — victoria', () => {
 
 	it('la victoria detiene el reloj', () => {
 		const store = useGameStore()
+		const {targetVerbs, refillDelayMs} = getLevelConfig('easy')
 		store.startGame('target', 'easy')
 		advance(15 * SECOND)
 
-		solveMany(store, getLevelConfig('easy').targetVerbs)
+		solveMany(store, targetVerbs)
 
 		expect(store.isTimerRunning).toBe(false)
-		expect(store.result?.timeMs).toBe(15 * SECOND)
+		// Cada acierto espera su reposición, salvo el último: la victoria corta el
+		// reloj antes de que ese retardo llegue a correr.
+		expect(store.result?.timeMs).toBe(
+			15 * SECOND + (targetVerbs - 1) * (refillDelayMs + REFILL_APPEAR_MS),
+		)
 	})
 
 	it('los errores previos no impiden ganar', () => {
@@ -763,7 +899,10 @@ describe('Modo Precisión — ritmo y ranking', () => {
 	it('el ritmo se calcula en vivo durante la partida', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
-		solveMany(store, 5)
+
+		// Se resuelven sin esperar reposición para que el único tiempo transcurrido
+		// sea el que fija el test: 5 aciertos en 30 s son 10 verbos por minuto.
+		for (let index = 0; index < 5; index++) solve(store, visibleVerbIds(store)[0] ?? 0)
 		advance(30 * SECOND)
 
 		expect(store.pace).toBe(10)
@@ -780,7 +919,7 @@ describe('Modo Precisión — ritmo y ranking', () => {
 	it('el ritmo queda congelado al terminar', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
-		solveMany(store, 6)
+		for (let index = 0; index < 6; index++) solve(store, visibleVerbIds(store)[0] ?? 0)
 		advance(60 * SECOND)
 
 		fail(store)
@@ -818,7 +957,7 @@ describe('Modo Precisión — ritmo y ranking', () => {
 	it('1 acierto en 300 ms da un ritmo altísimo pero no clasifica', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
-		solveMany(store, 1)
+		solve(store, visibleVerbIds(store)[0] ?? 0)
 		advance(300)
 
 		fail(store)

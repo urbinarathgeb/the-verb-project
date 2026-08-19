@@ -8,7 +8,7 @@ import {
 	getCellStatus,
 	getSelectedCells,
 	isMatchingTriad,
-	replaceTriad,
+	refillSlots,
 } from '../board'
 import {createSeededRng} from '../shuffle'
 import {VERB_FORMS, type Verb} from '@/types/verb'
@@ -357,104 +357,195 @@ describe('getCellStatus', () => {
 	})
 })
 
-describe('replaceTriad', () => {
+describe('refillSlots', () => {
 	const verbs = makeVerbs(10)
 	const {columns, pool} = createBoard(verbs, 6, createSeededRng(4))
-	const resolvedVerbId = columns.present[0]?.verbId ?? 0
-	const incoming = pool[0] ?? makeVerb(99)
+	const incoming = pool[0] as Verb
+	/** El verbo de la primera fila de presente, como si acabara de acertarse. */
+	const resolvedId = (columns.present[0] as Cell).verbId
 
-	it('retira del tablero las tres celdas del verbo resuelto', () => {
-		const next = replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(1))
+	it('coloca la tríada entrante, una celda por columna', () => {
+		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(1))
 
 		for (const form of VERB_FORMS) {
-			expect(next[form].some((cell) => cell.verbId === resolvedVerbId)).toBe(false)
+			const placed = next[form].filter((cell) => cell.verbId === incoming.id)
+
+			expect(placed).toHaveLength(1)
+			expect(placed[0]?.text).toBe(incoming[form])
 		}
 	})
 
-	it('mete las tres celdas del verbo entrante', () => {
-		const next = replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(1))
+	it('mantiene la altura de las columnas', () => {
+		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(1))
 
-		for (const form of VERB_FORMS) {
-			const entering = next[form].filter((cell) => cell.verbId === incoming.id)
-			expect(entering).toHaveLength(1)
-			expect(entering[0]?.text).toBe(incoming[form])
-		}
-	})
-
-	it('mantiene la altura del tablero mientras haya pool', () => {
-		const next = replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(1))
-
-		expect(VERB_FORMS.every((form) => next[form].length === 6)).toBe(true)
-	})
-
-	it('conserva el resto de verbos del tablero', () => {
-		const before = new Set(columns.present.map((cell) => cell.verbId))
-		before.delete(resolvedVerbId)
-
-		const next = replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(1))
-		const after = new Set(next.present.map((cell) => cell.verbId))
-
-		expect([...before].every((id) => after.has(id))).toBe(true)
-	})
-
-	it('no muta las columnas recibidas', () => {
-		const snapshot = structuredClone(columns)
-
-		replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(1))
-
-		expect(columns).toEqual(snapshot)
+		for (const form of VERB_FORMS) expect(next[form]).toHaveLength(6)
 	})
 
 	/**
-	 * Ésta es la razón de ser de la elección de filas: el jugador acaba de ver
-	 * cambiar tres celdas, así que si dos quedaran en la misma fila sabría gratis
-	 * que pertenecen al mismo verbo. Colocar la tríada en los huecos liberados sin
-	 * más produce esa alineación en torno al 44 % de las veces con N = 6.
+	 * Es LA diferencia con la mecánica anterior, que intercambiaba dos posiciones
+	 * por columna: el jugador perdía de vista una celda que acababa de localizar.
 	 */
-	it('nunca coloca la tríada entrante en la misma fila de dos columnas', () => {
-		for (let seed = 0; seed < 200; seed++) {
-			const board = createBoard(verbs, 6, createSeededRng(seed))
-			const resolvedId = board.columns.present[0]?.verbId ?? 0
-			const entering = board.pool[0] ?? makeVerb(99)
-			const next = replaceTriad(board.columns, resolvedId, entering, createSeededRng(seed))
+	it('no mueve ninguna celda ocupada: sólo cambia la casilla libre', () => {
+		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(7))
 
+		for (const form of VERB_FORMS) {
+			const changed = columns[form].filter((cell, index) => next[form][index]?.id !== cell.id)
+
+			expect(changed).toHaveLength(1)
+			// Y la única que cambia es la que estaba libre.
+			expect(changed[0]?.verbId).toBe(resolvedId)
+		}
+	})
+
+	/**
+	 * Regla anti-pista de `MECHANICS.md` §1: alineada en dos columnas, el jugador
+	 * sabría gratis que esas celdas son del mismo verbo.
+	 */
+	it('nunca alinea la tríada entrante en la misma fila de dos columnas', () => {
+		// Con varios huecos, que es el caso que crea la reposición diferida.
+		const vacated = [
+			(columns.present[0] as Cell).verbId,
+			(columns.present[2] as Cell).verbId,
+			(columns.present[4] as Cell).verbId,
+		]
+
+		for (let seed = 1; seed <= 200; seed++) {
+			const next = refillSlots(columns, vacated, incoming, createSeededRng(seed))
 			const rows = VERB_FORMS.map((form) =>
-				next[form].findIndex((cell) => cell.verbId === entering.id),
+				next[form].findIndex((cell) => cell.verbId === incoming.id),
 			)
 
 			expect(new Set(rows).size).toBe(VERB_FORMS.length)
 		}
 	})
 
-	it('mueve como máximo una celda además de la que entra', () => {
-		const next = replaceTriad(columns, resolvedVerbId, incoming, createSeededRng(7))
+	it('sólo usa casillas libres, nunca una ocupada', () => {
+		const vacated = [(columns.present[3] as Cell).verbId]
 
-		for (const form of VERB_FORMS) {
-			const moved = columns[form].filter((cell, index) => next[form][index]?.id !== cell.id)
-			// La celda resuelta y, si el destino no era su hueco, la desplazada.
-			expect(moved.length).toBeLessThanOrEqual(2)
+		for (let seed = 1; seed <= 50; seed++) {
+			const next = refillSlots(columns, vacated, incoming, createSeededRng(seed))
+
+			for (const form of VERB_FORMS) {
+				const row = next[form].findIndex((cell) => cell.verbId === incoming.id)
+
+				expect(columns[form][row]?.verbId).toBe(vacated[0])
+			}
 		}
 	})
 
-	describe('con el pool agotado', () => {
-		it('reduce el tablero en una fila por columna', () => {
-			const next = replaceTriad(columns, resolvedVerbId, null, createSeededRng(1))
-
-			expect(VERB_FORMS.every((form) => next[form].length === 5)).toBe(true)
-		})
-
-		it('deja el tablero vacío al resolver la última tríada', () => {
-			const single = createBoard(makeVerbs(1), 1, createSeededRng(1))
-			const lastVerbId = single.columns.present[0]?.verbId ?? 0
-			const next = replaceTriad(single.columns, lastVerbId, null, createSeededRng(1))
-
-			expect(VERB_FORMS.every((form) => next[form].length === 0)).toBe(true)
-		})
+	/** Sin pool no hay nada que colocar: las resueltas se quedan atenuadas. */
+	it('devuelve el tablero intacto si no hay verbo entrante', () => {
+		expect(refillSlots(columns, [resolvedId], null, createSeededRng(1))).toBe(columns)
 	})
 
-	it('deja las columnas intactas si el verbo no está en el tablero', () => {
-		const next = replaceTriad(columns, -1, incoming, createSeededRng(1))
+	it('devuelve el tablero intacto si no hay ninguna casilla libre', () => {
+		expect(refillSlots(columns, [], incoming, createSeededRng(1))).toBe(columns)
+	})
 
-		expect(next).toEqual(columns)
+	it('no muta las columnas recibidas', () => {
+		const before = structuredClone(columns)
+
+		refillSlots(columns, [resolvedId], incoming, createSeededRng(1))
+
+		expect(columns).toEqual(before)
+	})
+})
+
+/**
+ * La regla anti-pista tiene que aguantar una PARTIDA ENTERA, no una reposición
+ * aislada, y ahí es donde estaba el problema: al reponer la última tríada de una
+ * tanda queda un solo hueco por columna, y si las reposiciones anteriores
+ * consumieron las filas equivocadas la colisión es inevitable.
+ *
+ * Dos medidas la reducen: el reparto ya no alinea ningún verbo, y la elección de
+ * filas mira una reposición por delante. De un 44 % sin ninguna regla se baja a
+ * ~1,6 %. **No es cero y el test no finge que lo sea:** quedan situaciones
+ * genuinamente forzadas. El umbral existe para detectar una regresión, no para
+ * declarar una garantía que no se cumple.
+ */
+describe('refillSlots — a lo largo de una partida', () => {
+	it('ningún verbo del reparto inicial comparte fila entre columnas', () => {
+		for (let seed = 1; seed <= 100; seed++) {
+			const {columns} = createBoard(makeVerbs(30), 6, createSeededRng(seed))
+
+			for (const cell of columns.present) {
+				const rows = VERB_FORMS.map((form) =>
+					columns[form].findIndex((candidate) => candidate.verbId === cell.verbId),
+				)
+
+				expect(new Set(rows).size).toBe(VERB_FORMS.length)
+			}
+		}
+	})
+
+	/**
+	 * Se simula como juega el motor de verdad: **no se repone hasta que hay
+	 * `refillMinVacancies` huecos**. Sin esa regla, con un solo hueco las tres
+	 * filas libres son las que dejó la tríada resuelta y la entrante cae siempre
+	 * ahí, que es el peor de los regalos.
+	 */
+	it('no repite la tríada entera ni alinea filas', () => {
+		const {boardSize, refillMinVacancies} = getLevelConfig('easy')
+		let refills = 0
+		let aligned = 0
+		let sameSlots = 0
+
+		for (let seed = 1; seed <= 60; seed++) {
+			const rng = createSeededRng(seed)
+			let {columns, pool} = createBoard(makeVerbs(40), boardSize, rng)
+			const resolved: number[] = []
+			let owed = 0
+
+			const vacated = (): number =>
+				columns.present.filter((cell) => resolved.includes(cell.verbId)).length
+
+			for (let round = 0; round < 40 && pool.length > 0; round++) {
+				const next = columns.present.find((cell) => !resolved.includes(cell.verbId))
+				if (next === undefined) break
+
+				resolved.push(next.verbId)
+				owed += 1
+
+				while (owed > 0 && vacated() >= refillMinVacancies && pool.length > 0) {
+					const incoming = pool[0] as Verb
+					// Casillas libres antes de reponer, para detectar si se repiten.
+					const freeBefore = VERB_FORMS.map((form) =>
+						columns[form].flatMap((cell, row) =>
+							resolved.includes(cell.verbId) ? [{row, verbId: cell.verbId}] : [],
+						),
+					)
+
+					const before = columns
+					columns = refillSlots(columns, resolved, incoming, rng)
+					if (columns === before) break
+
+					pool = pool.slice(1)
+					owed -= 1
+					refills += 1
+
+					const rows = VERB_FORMS.map((form) =>
+						columns[form].findIndex((cell) => cell.verbId === incoming.id),
+					)
+
+					if (new Set(rows).size !== VERB_FORMS.length) aligned += 1
+
+					// ¿Las tres casillas usadas venían de la misma tríada resuelta?
+					const owners = rows.map(
+						(row, index) => freeBefore[index]?.find((slot) => slot.row === row)?.verbId,
+					)
+
+					if (owners[0] !== undefined && new Set(owners).size === 1) sameSlots += 1
+				}
+			}
+		}
+
+		/*
+		 * Ambos son cero sobre unas dos mil reposiciones, medido. Se afirma el cero
+		 * exacto y no un umbral: si alguien baja `refillMinVacancies`, el regalo
+		 * vuelve y el test tiene que decirlo en vez de tragárselo.
+		 */
+		expect(refills).toBeGreaterThan(500)
+		expect(sameSlots).toBe(0)
+		expect(aligned).toBe(0)
 	})
 })

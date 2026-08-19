@@ -30,6 +30,15 @@ import type {
  * propio de la partida sí se declara aquí y se devuelve completo, como pide la
  * skill `vue-pinia-best-practices`.
  */
+/**
+ * Retardo con el que se aplica una reposición ya debida.
+ *
+ * Separa visualmente el acierto de la reposición: aplicarla en el mismo
+ * fotograma hacía que tres celdas se atenuaran y otras tres aparecieran a la vez,
+ * que se percibía como un pestañeo del tablero.
+ */
+export const REFILL_APPEAR_MS = 400
+
 export const useGameStore = defineStore('game', () => {
 	const mode = shallowRef<GameMode | null>(null)
 	const difficulty = shallowRef<Difficulty | null>(null)
@@ -115,6 +124,7 @@ export const useGameStore = defineStore('game', () => {
 
 	/** Deja la partida en su estado inicial, sin configuración de modo ni nivel. */
 	function resetGame(): void {
+		cancelRefills()
 		timer.reset()
 		board.deal([], 0)
 		mode.value = null
@@ -131,6 +141,8 @@ export const useGameStore = defineStore('game', () => {
 	function startGame(nextMode: GameMode, nextDifficulty: Difficulty): void {
 		const config = getLevelConfig(nextDifficulty)
 
+		// Una partida nueva no hereda las reposiciones pendientes de la anterior.
+		cancelRefills()
 		timer.reset()
 		errors.value = 0
 		completedAt.value = null
@@ -143,6 +155,147 @@ export const useGameStore = defineStore('game', () => {
 		timer.start()
 	}
 
+	/*
+	 * Reposiciones pendientes.
+	 *
+	 * Cada acierto agenda la suya, así que puede haber varias en vuelo a la vez
+	 * durante una racha. Se guardan para poder cancelarlas: una partida terminada
+	 * que siguiera repoblando el tablero mostraría verbos nuevos bajo el modal de
+	 * desenlace, y en la siguiente partida los temporizadores viejos repondrían
+	 * sobre un tablero que ya no es el suyo.
+	 *
+	 * No es estado reactivo —nadie lo pinta— así que no forma parte del store.
+	 */
+	let refillTimers: ReturnType<typeof setTimeout>[] = []
+	let drainTimer: ReturnType<typeof setTimeout> | null = null
+	let graceTimer: ReturnType<typeof setTimeout> | null = null
+
+	/**
+	 * Reposiciones cuyo retardo ya venció pero que aún no se han aplicado.
+	 *
+	 * Existen porque una reposición puede quedar **en deuda**: si al vencer hay
+	 * menos huecos de los que pide `refillMinVacancies`, aplicarla regalaría la
+	 * tríada. Sin este contador la reposición se perdería y el tablero encogería
+	 * para siempre.
+	 */
+	let owedRefills = 0
+
+	function cancelRefills(): void {
+		for (const timer of refillTimers) clearTimeout(timer)
+		refillTimers = []
+
+		if (drainTimer !== null) clearTimeout(drainTimer)
+		if (graceTimer !== null) clearTimeout(graceTimer)
+
+		drainTimer = null
+		graceTimer = null
+		owedRefills = 0
+	}
+
+	/**
+	 * Caducidad del mínimo de huecos.
+	 *
+	 * El mínimo es una **preferencia, no una condición absoluta**, y tiene que
+	 * serlo: cada acierto genera una reposición, y como el tablero deja de pagarlas
+	 * al bajar del mínimo, un mínimo de G huecos dejaría el tablero fijo en N−(G−1)
+	 * durante el resto de la partida, oscilando entre G−1 y G huecos sin volver a
+	 * llenarse nunca. Pasado este margen se repone igual.
+	 */
+	function scheduleGrace(): void {
+		if (graceTimer !== null) clearTimeout(graceTimer)
+		graceTimer = null
+
+		if (owedRefills === 0) return
+
+		graceTimer = setTimeout(() => {
+			graceTimer = null
+			if (status.value !== 'playing') return
+
+			applyRefills(true)
+		}, level.value?.refillGraceMs ?? 0)
+	}
+
+	/**
+	 * Aplica las reposiciones debidas que el tablero admita.
+	 *
+	 * Con `ignoreMinimum` se aplica **una sola** aunque falten huecos: es la salida
+	 * del margen, y hacerlo de una en una devuelve el tablero a su tamaño a ritmo
+	 * visible en lugar de llenarlo de golpe.
+	 */
+	function applyRefills(ignoreMinimum: boolean): void {
+		const minVacancies = ignoreMinimum ? 1 : (level.value?.refillMinVacancies ?? 1)
+
+		while (owedRefills > 0 && board.vacatedCount.value >= minVacancies) {
+			// Si el pool se agotó no hay nada que colocar y la deuda es incobrable.
+			if (!board.refill()) {
+				owedRefills = 0
+				break
+			}
+
+			owedRefills -= 1
+
+			if (ignoreMinimum) break
+		}
+
+		scheduleGrace()
+		forceRefillIfTooEmpty()
+	}
+
+	/**
+	 * Pide aplicar las reposiciones debidas.
+	 *
+	 * Nunca en el mismo instante del acierto: hacerlo producía un salto: las tres
+	 * celdas se atenuaban y otras tres aparecían en el mismo fotograma.
+	 */
+	function queueDrain(): void {
+		if (drainTimer !== null) return
+
+		drainTimer = setTimeout(() => {
+			drainTimer = null
+			if (status.value !== 'playing') return
+
+			applyRefills(false)
+		}, REFILL_APPEAR_MS)
+	}
+
+	/**
+	 * Adelanta una reposición cuando el tablero se ha quedado demasiado vacío.
+	 *
+	 * Consume el temporizador **más antiguo** y deja a los demás con su hora
+	 * original. Reprogramarlos haría que forzar una vez retrasara a todas las
+	 * siguientes, y el tablero se llenaría a tirones en vez de a ritmo constante.
+	 */
+	function forceRefillIfTooEmpty(): void {
+		const forceAt = level.value?.refillForceVacancies
+
+		if (forceAt === undefined) return
+		if (board.vacatedCount.value < forceAt) return
+
+		const oldest = refillTimers.shift()
+		if (oldest === undefined) return
+
+		clearTimeout(oldest)
+		owedRefills += 1
+		queueDrain()
+	}
+
+	function scheduleRefill(): void {
+		const delay = level.value?.refillDelayMs ?? 0
+
+		const timer = setTimeout(() => {
+			refillTimers = refillTimers.filter((pending) => pending !== timer)
+
+			// Doble red: aunque `cancelRefills` los limpia, comprobar el estado evita
+			// depender de que nadie olvide llamarlo en un camino nuevo.
+			if (status.value !== 'playing') return
+
+			owedRefills += 1
+			queueDrain()
+		}, delay)
+
+		refillTimers.push(timer)
+	}
+
 	/**
 	 * Cierra la partida. Detiene el reloj antes de leer el tiempo, para que el
 	 * `timeMs` del resultado sea exacto y no el del último tick.
@@ -150,6 +303,7 @@ export const useGameStore = defineStore('game', () => {
 	function finish(finalStatus: FinishedStatus): void {
 		if (status.value !== 'playing') return
 
+		cancelRefills()
 		timer.pause()
 		status.value = finalStatus
 		completedAt.value = new Date().toISOString()
@@ -180,9 +334,16 @@ export const useGameStore = defineStore('game', () => {
 
 	/** Condición de victoria, comprobada tras cada acierto. */
 	function checkWinCondition(): void {
-		// Vaciar el tablero gana en cualquier modo: no quedan jugadas posibles. Es
-		// la victoria del Modo Precisión, que no tiene objetivo de aciertos.
-		if (board.isCleared.value) {
+		/*
+		 * Vaciar el tablero gana sólo si **además se agotó el pool**. Es la victoria
+		 * del Modo Precisión, que no tiene objetivo de aciertos.
+		 *
+		 * La condición del pool es imprescindible desde la reposición diferida: un
+		 * jugador rápido puede emparejar todas las tríadas visibles antes de que
+		 * llegue ninguna reposición, y sin esta comprobación ganaría la partida a
+		 * los pocos segundos con el pool casi intacto.
+		 */
+		if (board.isCleared.value && board.isPoolExhausted.value) {
 			finish('won')
 			return
 		}
@@ -205,7 +366,15 @@ export const useGameStore = defineStore('game', () => {
 		const outcome = board.select(cell)
 
 		if (outcome.type === 'mismatch') applyErrorRules()
-		if (outcome.type === 'match') checkWinCondition()
+
+		if (outcome.type === 'match') {
+			scheduleRefill()
+			// El acierto acaba de abrir un hueco: puede desbloquear una reposición en
+			// deuda, o dejar el tablero tan vacío que haya que adelantar la siguiente.
+			queueDrain()
+			forceRefillIfTooEmpty()
+			checkWinCondition()
+		}
 
 		return outcome
 	}
@@ -232,6 +401,7 @@ export const useGameStore = defineStore('game', () => {
 		errorCellIds: board.errorCellIds,
 		resolvedVerbIds: board.resolvedVerbIds,
 		visibleCount: board.visibleCount,
+		vacatedCount: board.vacatedCount,
 		isPoolExhausted: board.isPoolExhausted,
 		isCleared: board.isCleared,
 		matchedCount,

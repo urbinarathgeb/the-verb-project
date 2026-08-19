@@ -20,13 +20,16 @@ export interface BoardSetup {
 }
 
 /**
- * Reintentos máximos al buscar un orden de columna distinto de los ya usados.
+ * Reintentos máximos al buscar un orden de columna que no comparta ninguna fila
+ * con las anteriores.
  *
- * Con `N ≥ 4` la probabilidad de agotarlos es despreciable. El límite existe
- * para que un tablero degenerado (`N ≤ 1`, donde no hay orden alternativo
- * posible) no provoque un bucle infinito.
+ * Dos permutaciones al azar no coinciden en ninguna posición con probabilidad
+ * ≈ 1/e (37 %), así que la tercera columna necesita del orden de veinte intentos.
+ * Cien deja margen de sobra. El límite existe para que un tablero degenerado
+ * (`N ≤ 1`, donde no hay orden alternativo posible) no provoque un bucle
+ * infinito; en ese caso se acepta el último candidato.
  */
-const MAX_ORDER_ATTEMPTS = 10
+const MAX_ORDER_ATTEMPTS = 100
 
 /** Identificador estable de celda, con el formato documentado en `CellId`. */
 export function createCellId(verbId: number, form: VerbForm): string {
@@ -42,26 +45,40 @@ export function createCell(verb: Verb, form: VerbForm): Cell {
 	}
 }
 
-/** Huella del orden de una columna, para comparar dos órdenes entre sí. */
-function orderKey(verbs: readonly Verb[]): string {
-	return verbs.map((verb) => verb.id).join(',')
+/** ¿Algún verbo de `candidate` cae en la misma fila que en un orden ya emitido? */
+function sharesAnyRow(
+	candidate: readonly Verb[],
+	usedOrders: readonly (readonly Verb[])[],
+): boolean {
+	return usedOrders.some((order) => order.some((verb, index) => verb.id === candidate[index]?.id))
 }
 
 /**
- * Baraja `verbs` evitando repetir cualquiera de los órdenes de `usedOrders`.
+ * Baraja `verbs` de modo que **ningún verbo repita fila** respecto a las
+ * columnas ya emitidas.
  *
- * El motivo es de jugabilidad, no estético: si dos columnas acabaran con los
- * verbos en el mismo orden, la fila delataría la correspondencia y el tablero se
- * resolvería sin saber los verbos, justo lo que `MECHANICS.md` §1 evita al
- * desordenar cada columna. Un barajado uniforme produce esa coincidencia con
- * probabilidad 1/N!, que con N = 6 es aproximadamente una partida de cada 250:
- * poco frecuente, pero demasiado como para dejarlo al azar.
+ * Es más exigente que evitar órdenes idénticos, y el motivo es de jugabilidad.
+ * La regla de `MECHANICS.md` §1 dice que una tríada entrante nunca puede quedar
+ * alineada en dos columnas, porque delataría que esas celdas son del mismo
+ * verbo. Con el reparto barajado libremente, el 45 % de los verbos nacía ya
+ * alineado, y al resolverse dejaban huecos que forzaban a alinear la tríada
+ * entrante: la regla se rompía en un 5 % de las reposiciones por mucho cuidado
+ * que se pusiera al elegir. Garantizarlo desde el reparto convierte «ningún
+ * verbo comparte fila entre columnas» en un invariante de todo el tablero, y las
+ * reposiciones lo heredan.
+ *
+ * De paso subsume la regla anterior: dos columnas con el mismo orden coincidirían
+ * en todas las filas.
  */
-function shuffleIntoNewOrder(verbs: readonly Verb[], usedOrders: string[], rng: Rng): Verb[] {
+function shuffleIntoDiscordantOrder(
+	verbs: readonly Verb[],
+	usedOrders: readonly Verb[][],
+	rng: Rng,
+): Verb[] {
 	let candidate = shuffle(verbs, rng)
 
 	for (let attempt = 1; attempt < MAX_ORDER_ATTEMPTS; attempt++) {
-		if (!usedOrders.includes(orderKey(candidate))) break
+		if (!sharesAnyRow(candidate, usedOrders)) break
 		candidate = shuffle(verbs, rng)
 	}
 
@@ -90,11 +107,11 @@ export function createBoard(
 	// Se acumulan los órdenes ya emitidos para que la siguiente columna no repita
 	// ninguno. Depende de que las propiedades del literal de abajo se evalúen en
 	// orden de escritura, que es el comportamiento garantizado en JavaScript.
-	const usedOrders: string[] = []
+	const usedOrders: Verb[][] = []
 
 	function buildColumn(form: VerbForm): Cell[] {
-		const order = shuffleIntoNewOrder(visible, usedOrders, rng)
-		usedOrders.push(orderKey(order))
+		const order = shuffleIntoDiscordantOrder(visible, usedOrders, rng)
+		usedOrders.push(order)
 		return order.map((verb) => createCell(verb, form))
 	}
 
@@ -174,77 +191,151 @@ export function getCellStatus(
 	return 'neutral'
 }
 
-/**
- * Coloca `incomingCell` en la columna, retirando la celda del verbo resuelto.
- *
- * La celda nueva no ocupa necesariamente el hueco: va a `targetRow`, y la celda
- * que estuviera ahí baja al hueco. Es un intercambio de dos posiciones, así que
- * mueve una sola celda además de la que entra — el resto del tablero permanece
- * donde el jugador lo dejó.
- */
-function replaceInColumn(
-	cells: readonly Cell[],
-	resolvedVerbId: number,
-	incomingCell: Cell | null,
-	targetRow: number | undefined,
-): Cell[] {
-	const holeIndex = cells.findIndex((cell) => cell.verbId === resolvedVerbId)
-	if (holeIndex === -1) return [...cells]
+/** Casilla libre: la fila y el verbo resuelto que la dejó. */
+interface FreeSlot {
+	readonly row: number
+	readonly verbId: number
+}
 
-	const result = [...cells]
+/** Casillas de una columna cuya celda pertenece a un verbo ya resuelto. */
+function freeSlots(cells: readonly Cell[], resolvedVerbIds: readonly number[]): FreeSlot[] {
+	return cells.flatMap((cell, row) =>
+		resolvedVerbIds.includes(cell.verbId) ? [{row, verbId: cell.verbId}] : [],
+	)
+}
 
-	// Sin verbo entrante el hueco no se rellena: el pool se agotó y el tablero
-	// se reduce hasta resolverse por completo (`PLAN.md`, Bitácora, P1).
-	if (incomingCell === null) {
-		result.splice(holeIndex, 1)
-		return result
+/** ¿Se puede elegir una fila distinta de cada conjunto? */
+function hasDistinctAssignment(
+	present: readonly FreeSlot[],
+	past: readonly FreeSlot[],
+	participle: readonly FreeSlot[],
+): boolean {
+	for (const presentSlot of present) {
+		for (const pastSlot of past) {
+			if (pastSlot.row === presentSlot.row) continue
+
+			for (const participleSlot of participle) {
+				if (participleSlot.row !== presentSlot.row && participleSlot.row !== pastSlot.row) {
+					return true
+				}
+			}
+		}
 	}
 
-	const target = targetRow ?? holeIndex
-	const displaced = result[target]
-
-	if (target === holeIndex || displaced === undefined) {
-		result[holeIndex] = incomingCell
-		return result
-	}
-
-	result[holeIndex] = displaced
-	result[target] = incomingCell
-	return result
+	return false
 }
 
 /**
- * Retira del tablero la tríada de `resolvedVerbId` y, si hay verbo disponible,
- * mete una tríada nueva en su lugar (`PLAN.md`, Bitácora, P1).
+ * Una casilla libre por columna para la tríada entrante.
  *
- * Las filas de destino se eligen **distintas entre las tres columnas**. Si la
- * tríada entrante quedara alineada en dos columnas, el jugador —que acaba de ver
- * cambiar esas tres celdas— sabría de inmediato que pertenecen al mismo verbo.
- * Colocarla sin más en los huecos liberados provoca esa alineación en torno al
- * 44 % de las reposiciones con `N = 6`, así que no basta con dejarlo al azar.
+ * Se buscan tres condiciones, en este orden de importancia:
+ *
+ * 1. **Que no sean las tres casillas de la misma tríada resuelta.** Es el peor
+ *    de los regalos: el jugador acaba de ver esas tres celdas atenuarse juntas,
+ *    así que ya sabe que forman tríada; ver tres celdas nuevas exactamente ahí
+ *    le identifica el verbo entero sin pensar. Con un solo hueco es inevitable
+ *    —por eso el motor de juego exige un mínimo de huecos antes de reponer—,
+ *    pero con dos o más casi siempre se puede evitar.
+ * 2. **Filas distintas entre las tres columnas** (`MECHANICS.md` §1): dos celdas
+ *    alineadas revelarían que pertenecen al mismo verbo.
+ * 3. **Que el resto siga teniendo salida.** Consumir la casilla equivocada puede
+ *    dejar a la reposición siguiente sin ninguna combinación válida.
+ *
+ * La búsqueda es exhaustiva sobre las casillas barajadas —el azar lo da el
+ * barajado— y su coste está acotado por el tamaño del tablero, que no pasa de
+ * diez filas. Si no existe ninguna opción perfecta se elige la menos mala.
  */
-export function replaceTriad(
+function pickDistinctRows(
+	presentSlots: readonly FreeSlot[],
+	pastSlots: readonly FreeSlot[],
+	participleSlots: readonly FreeSlot[],
+	rng: Rng,
+): [number, number, number] {
+	const present = shuffle(presentSlots, rng)
+	const past = shuffle(pastSlots, rng)
+	const participle = shuffle(participleSlots, rng)
+
+	let best: {penalty: number; rows: [number, number, number]} | null = null
+
+	for (const presentSlot of present) {
+		for (const pastSlot of past) {
+			for (const participleSlot of participle) {
+				const rows: [number, number, number] = [presentSlot.row, pastSlot.row, participleSlot.row]
+
+				const aligned = new Set(rows).size !== rows.length
+				const sameTriad =
+					presentSlot.verbId === pastSlot.verbId && pastSlot.verbId === participleSlot.verbId
+
+				const restPresent = present.filter((slot) => slot.row !== presentSlot.row)
+				const restPast = past.filter((slot) => slot.row !== pastSlot.row)
+				const restParticiple = participle.filter((slot) => slot.row !== participleSlot.row)
+
+				// Sin huecos restantes no habrá más reposiciones a las que estorbar.
+				const leavesWayOut =
+					restPresent.length === 0 || hasDistinctAssignment(restPresent, restPast, restParticiple)
+
+				const penalty = (sameTriad ? 4 : 0) + (aligned ? 2 : 0) + (leavesWayOut ? 0 : 1)
+
+				if (best === null || penalty < best.penalty) best = {penalty, rows}
+				if (penalty === 0) return rows
+			}
+		}
+	}
+
+	return best?.rows ?? [present[0]?.row ?? 0, past[0]?.row ?? 0, participle[0]?.row ?? 0]
+}
+
+/** Sustituye la celda de una fila, dejando el resto de la columna intacto. */
+function placeAt(cells: readonly Cell[], row: number, cell: Cell): Cell[] {
+	const next = [...cells]
+	next[row] = cell
+
+	return next
+}
+
+/**
+ * Mete una tríada nueva en las casillas libres del tablero.
+ *
+ * «Libre» es la casilla de un verbo ya resuelto: al acertar, sus celdas no se
+ * retiran, se quedan atenuadas ocupando su sitio hasta que una reposición las
+ * sustituye (`PLAN.md`, Bitácora, D8).
+ *
+ * **No mueve ninguna celda ocupada.** Esa es la diferencia con la mecánica
+ * anterior, que intercambiaba dos posiciones por columna y hacía que el jugador
+ * perdiera de vista una celda que acababa de localizar. Es posible ahora porque
+ * la reposición se difiere: al acumularse huecos hay filas libres de sobra donde
+ * colocar la entrante en filas distintas, sin desplazar nada.
+ *
+ * Si el pool se agotó (`incoming === null`) o alguna columna no tiene hueco, el
+ * tablero se devuelve tal cual: las celdas resueltas se quedan atenuadas y el
+ * tablero se vacía a medida que se aciertan las que quedan.
+ */
+export function refillSlots(
 	columns: Columns,
-	resolvedVerbId: number,
+	resolvedVerbIds: readonly number[],
 	incoming: Verb | null,
 	rng: Rng = Math.random,
 ): Columns {
-	const height = columns.present.length
-	const rows = shuffle(
-		Array.from({length: height}, (_, index) => index),
+	if (incoming === null) return columns
+
+	const presentSlots = freeSlots(columns.present, resolvedVerbIds)
+	const pastSlots = freeSlots(columns.past, resolvedVerbIds)
+	const participleSlots = freeSlots(columns.participle, resolvedVerbIds)
+
+	if (presentSlots.length === 0 || pastSlots.length === 0 || participleSlots.length === 0) {
+		return columns
+	}
+
+	const [presentRow, pastRow, participleRow] = pickDistinctRows(
+		presentSlots,
+		pastSlots,
+		participleSlots,
 		rng,
 	)
 
-	function rebuild(form: VerbForm, targetRow: number | undefined): Cell[] {
-		const incomingCell = incoming === null ? null : createCell(incoming, form)
-		return replaceInColumn(columns[form], resolvedVerbId, incomingCell, targetRow)
-	}
-
-	// Una fila distinta por columna, tomada del barajado de arriba. Con un tablero
-	// de menos de 3 filas alguna queda `undefined` y esa columna usa su hueco.
 	return {
-		present: rebuild('present', rows[0]),
-		past: rebuild('past', rows[1]),
-		participle: rebuild('participle', rows[2]),
+		present: placeAt(columns.present, presentRow, createCell(incoming, 'present')),
+		past: placeAt(columns.past, pastRow, createCell(incoming, 'past')),
+		participle: placeAt(columns.participle, participleRow, createCell(incoming, 'participle')),
 	}
 }

@@ -333,21 +333,51 @@ describe('useBoard — validación de tríadas', () => {
 })
 
 describe('useBoard — reposición de tríadas', () => {
-	it('el acierto repone una tríada nueva y mantiene la altura', () => {
+	/**
+	 * La reposición ya no ocurre al acertar: `refill` la dispara aparte, y en la
+	 * app la agenda el store tras `refillDelayMs`. Ese hueco intermedio es la
+	 * mecánica, no un efecto secundario (`PLAN.md`, Bitácora, D8).
+	 */
+	it('el acierto deja un hueco en lugar de reponer', () => {
 		const play = playable(20, 6)
 		const verbId = play.visible()[0] ?? 0
 
 		solve(play, verbId)
 
-		expect(play.board.visibleCount.value).toBe(6)
+		expect(play.board.visibleCount.value).toBe(5)
+		expect(play.board.vacatedCount.value).toBe(1)
 		expect(play.board.visibleVerbIds.value).not.toContain(verbId)
+		// La columna no encoge: la celda acertada sigue ahí, atenuada.
+		expect(play.board.columns.value.present).toHaveLength(6)
 	})
 
-	it('el verbo entrante sale del pool', () => {
+	it('`refill` devuelve el tablero a su tamaño jugable', () => {
+		const play = playable(20, 6)
+
+		solve(play, play.visible()[0] ?? 0)
+		play.board.refill()
+
+		expect(play.board.visibleCount.value).toBe(6)
+		expect(play.board.vacatedCount.value).toBe(0)
+	})
+
+	it('los aciertos encadenados acumulan huecos', () => {
+		const play = playable(20, 6)
+
+		for (let index = 0; index < 3; index++) solve(play, play.visible()[0] ?? 0)
+
+		expect(play.board.visibleCount.value).toBe(3)
+		expect(play.board.vacatedCount.value).toBe(3)
+	})
+
+	it('el verbo entrante sale del pool al reponer, no al acertar', () => {
 		const play = playable(20, 6)
 		const incoming = play.board.pool.value[0]
 
 		solve(play, play.visible()[0] ?? 0)
+		expect(play.board.pool.value).toHaveLength(14)
+
+		play.board.refill()
 
 		expect(play.board.pool.value).toHaveLength(13)
 		expect(play.board.visibleVerbIds.value).toContain(incoming?.id)
@@ -367,19 +397,34 @@ describe('useBoard — reposición de tríadas', () => {
 		const incoming = play.board.pool.value[0]?.id ?? 0
 
 		solve(play, play.visible()[0] ?? 0)
+		play.board.refill()
 
 		expect(solve(play, incoming)).toMatchObject({type: 'match', verbId: incoming})
 		expect(play.board.matchedCount.value).toBe(2)
 	})
 
+	/** Una celda acertada no es pulsable aunque siga en el tablero. */
+	it('la tríada acertada deja de aceptar selecciones', () => {
+		const play = playable(20, 6)
+		const verbId = play.visible()[0] ?? 0
+
+		solve(play, verbId)
+
+		const cell = play.board.columns.value.present.find((candidate) => candidate.verbId === verbId)
+
+		expect(play.board.select(cell as Cell)).toEqual({type: 'ignored'})
+	})
+
 	describe('con el pool agotado', () => {
-		it('el tablero se reduce en vez de reponer', () => {
+		it('reponer no hace nada y las celdas resueltas se quedan atenuadas', () => {
 			const play = playable(6, 6)
 
 			expect(play.board.isPoolExhausted.value).toBe(true)
 			solve(play, play.visible()[0] ?? 0)
+			play.board.refill()
 
 			expect(play.board.visibleCount.value).toBe(5)
+			expect(play.board.columns.value.present).toHaveLength(6)
 		})
 
 		it('se puede resolver el tablero por completo', () => {
@@ -397,8 +442,7 @@ describe('useBoard — reposición de tríadas', () => {
 
 		/**
 		 * El recorrido completo del nivel: se agota el pool reponiendo y después el
-		 * tablero se reduce hasta vaciarse. Es el camino de la victoria en Modo
-		 * Precisión con un pool pequeño.
+		 * tablero se vacía. Es el camino de la victoria en Modo Precisión.
 		 */
 		it('agota el pool reponiendo y luego vacía el tablero', () => {
 			const play = playable(10, 6)
@@ -407,6 +451,7 @@ describe('useBoard — reposición de tríadas', () => {
 				const verbId = play.visible()[0]
 				if (verbId === undefined) break
 				solve(play, verbId)
+				play.board.refill()
 			}
 
 			expect(play.board.matchedCount.value).toBe(10)

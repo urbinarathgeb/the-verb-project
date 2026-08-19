@@ -27,7 +27,11 @@ function cellOf(engine: Engine, verbId: number, form: VerbForm): Cell {
 }
 
 function visibleVerbIds(engine: Engine): number[] {
-	return engine.columns.value.present.map((cell) => cell.verbId)
+	// Se filtran las resueltas: desde la reposición diferida siguen en el tablero,
+	// atenuadas, hasta que una reposición las sustituye.
+	return engine.columns.value.present
+		.filter((cell) => !engine.resolvedVerbIds.value.includes(cell.verbId))
+		.map((cell) => cell.verbId)
 }
 
 function solve(engine: Engine, verbId: number): void {
@@ -196,6 +200,9 @@ describe('useGameEngine — partida completa', () => {
 
 		for (let done = 0; done < targetVerbs; done++) {
 			solve(engine, visibleVerbIds(engine)[0] ?? 0)
+			// Sin esperar la reposición el tablero se agota a las seis tríadas y nunca
+			// se alcanzaría el objetivo de ocho.
+			vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs)
 		}
 
 		expect(engine.status.value).toBe('won')
@@ -208,8 +215,12 @@ describe('useGameEngine — partida completa', () => {
 	it('juega un Modo Precisión hasta el primer fallo', () => {
 		const engine = useGameEngine()
 		engine.startGame('precision', 'easy')
-		for (let done = 0; done < 6; done++) solve(engine, visibleVerbIds(engine)[0] ?? 0)
-		vi.advanceTimersByTime(30 * SECOND)
+		for (let done = 0; done < 6; done++) {
+			solve(engine, visibleVerbIds(engine)[0] ?? 0)
+			vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs)
+		}
+		// Seis aciertos con seis reposiciones de 5 s: 30 s ya transcurridos.
+		expect(engine.elapsedMs.value).toBe(30 * SECOND)
 
 		fail(engine)
 
