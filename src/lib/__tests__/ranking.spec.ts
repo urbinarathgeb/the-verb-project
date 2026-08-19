@@ -42,10 +42,6 @@ describe('calculatePace', () => {
 		expect(calculatePace(20, 60 * SECOND)).toBe(20)
 	})
 
-	/**
-	 * La fórmula combina ambas variables para que no compense tomárselo con calma:
-	 * más aciertos en más tiempo puede dar peor ritmo (`MECHANICS.md` §3).
-	 */
 	it('acertar más pero mucho más lento empeora el ritmo', () => {
 		const rapido = calculatePace(10, 30 * SECOND)
 		const lento = calculatePace(12, 90 * SECOND)
@@ -57,10 +53,6 @@ describe('calculatePace', () => {
 		expect(calculatePace(0, 60 * SECOND)).toBe(0)
 	})
 
-	/**
-	 * Un tiempo de 0 haría explotar el ratio y colocaría esa sesión en lo alto del
-	 * ranking. Es imposible en una partida real, pero no debe producir `Infinity`.
-	 */
 	it('un tiempo de 0 no produce un ritmo infinito', () => {
 		expect(calculatePace(5, 0)).toBe(0)
 	})
@@ -77,7 +69,6 @@ describe('calculatePace', () => {
 })
 
 describe('isEligibleForRanking — Modo Objetivo', () => {
-	/** La métrica es el tiempo empleado en alcanzar el objetivo (`MECHANICS.md` §2). */
 	it('una victoria clasifica', () => {
 		expect(isEligibleForRanking(makeResult({mode: 'target', status: 'won'}))).toBe(true)
 	})
@@ -94,11 +85,6 @@ describe('isEligibleForRanking — Modo Objetivo', () => {
 })
 
 describe('isEligibleForRanking — Modo Supervivencia', () => {
-	/**
-	 * Lo normal en este modo es terminar fallando: el pool es mayor de lo que se
-	 * completa en una sesión (`MECHANICS.md` §3). Exigir victoria vaciaría el
-	 * ranking.
-	 */
 	it.each(['won', 'lost'] as FinishedStatus[])(
 		'clasifica con desenlace "%s" si supera el piso',
 		(status) => {
@@ -118,11 +104,6 @@ describe('isEligibleForRanking — Modo Supervivencia', () => {
 		expect(isEligibleForRanking(result)).toBe(false)
 	})
 
-	/**
-	 * El caso degenerado que motiva el piso: 1 acierto en 300 ms da un ritmo de 200
-	 * verbos por minuto, altísimo por inestabilidad del ratio y no por habilidad.
-	 * Sin el piso encabezaría el ranking por encima de sesiones largas y hábiles.
-	 */
 	it('1 acierto en 300 ms tiene un ritmo altísimo pero no clasifica', () => {
 		const result = makeResult({verbsMatched: 1, timeMs: 300})
 
@@ -136,7 +117,6 @@ describe('isEligibleForRanking — Modo Supervivencia', () => {
 })
 
 describe('isEligibleForRanking — cobertura de modos', () => {
-	/** Si se añadiera un modo con ranking, este test obliga a decidir su regla. */
 	it.each(['target', 'precision'] as GameMode[])('decide para el modo "%s"', (mode) => {
 		const result = makeResult({mode, status: 'won', verbsMatched: MIN_MATCHES_FOR_RANKING})
 
@@ -157,10 +137,6 @@ function makeRow(overrides: Partial<RankingRow> = {}): RankingRow {
 }
 
 describe('isPersistable', () => {
-	/**
-	 * Guardarse y clasificar no son lo mismo. Una partida de Supervivencia floja forma
-	 * parte del historial del jugador aunque la vista la deje fuera del ranking.
-	 */
 	it('guarda las partidas de Supervivencia aunque no lleguen al piso del ranking', () => {
 		const result = makeResult({mode: 'precision', verbsMatched: 1})
 
@@ -172,7 +148,6 @@ describe('isPersistable', () => {
 		expect(isPersistable(makeResult({mode: 'target', status: 'won'}))).toBe(true)
 	})
 
-	/** Una derrota en Contrarreloj no tiene tiempo que comparar: no aporta nada. */
 	it('descarta las derrotas de Contrarreloj', () => {
 		expect(isPersistable(makeResult({mode: 'target', status: 'lost'}))).toBe(false)
 	})
@@ -191,10 +166,6 @@ describe('toRankingEntries', () => {
 		expect(entries.map((entry) => entry.position)).toEqual([1, 2])
 	})
 
-	/**
-	 * Con dos tiempos idénticos, numerarlos 1 y 2 sugeriría una diferencia que no
-	 * existe: la base desempata por fecha sólo para que el orden sea estable.
-	 */
 	it('los empates comparten posición y la siguiente salta', () => {
 		const entries = toRankingEntries(
 			[
@@ -220,7 +191,6 @@ describe('toRankingEntries', () => {
 		expect(entries.map((entry) => entry.position)).toEqual([1, 1])
 	})
 
-	/** El orden lo fija la base, que es quien conoce la regla de desempate. */
 	it('respeta el orden de llegada sin reordenar', () => {
 		const entries = toRankingEntries(
 			[
@@ -239,18 +209,12 @@ describe('toRankingEntries', () => {
 		expect(entries[0]?.pace).toBe(7.5)
 	})
 
-	/** La vista de Objetivo no trae ritmo, porque allí no clasifica. */
 	it('calcula el ritmo cuando la vista no lo trae', () => {
 		const entries = toRankingEntries([makeRow({verbs_matched: 10, time_ms: 60 * SECOND})], 'target')
 
 		expect(entries[0]?.pace).toBe(10)
 	})
 
-	/**
-	 * Los tipos generados declaran anulable todo lo que sale de una vista, porque
-	 * Postgres no propaga `not null` a través de ella. Una fila sin usuario o sin
-	 * tiempo no es una posición, es un dato roto: se omite en vez de pintar huecos.
-	 */
 	it('descarta las filas sin usuario, sin tiempo o sin aciertos', () => {
 		const entries = toRankingEntries(
 			[
@@ -298,7 +262,6 @@ describe('rankingMetric', () => {
 })
 
 describe('isBetterMetric', () => {
-	/** La dirección se invierte por modo, y ahí es donde es fácil equivocarse. */
 	it('en Contrarreloj gana el tiempo menor', () => {
 		expect(isBetterMetric(40_000, 50_000, 'target')).toBe(true)
 		expect(isBetterMetric(50_000, 40_000, 'target')).toBe(false)
@@ -316,11 +279,6 @@ describe('isBetterMetric', () => {
 })
 
 describe('compareWithPersonalBest', () => {
-	/**
-	 * La primera marca no es un récord: no había nada que batir, y celebrarlo
-	 * sonaría a premio vacío. Pero tampoco merece silencio, y por eso hay un
-	 * veredicto propio en vez de un booleano.
-	 */
 	it('distingue la primera marca de un récord', () => {
 		const result = makeResult({mode: 'target', status: 'won', timeMs: 40_000})
 
@@ -341,7 +299,6 @@ describe('compareWithPersonalBest', () => {
 		expect(compareWithPersonalBest(result, 9)).toBe('improved')
 	})
 
-	/** Una partida que no clasifica no puede ser récord de nada. */
 	it('no es récord si la partida no entra en el ranking', () => {
 		const perdida = makeResult({mode: 'target', status: 'lost', timeMs: 1000})
 		const floja = makeResult({mode: 'precision', verbsMatched: 1})

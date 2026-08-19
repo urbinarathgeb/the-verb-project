@@ -1,9 +1,5 @@
 import {afterEach, beforeEach, describe, expect, it, vi} from 'vitest'
 
-/**
- * El store lee `window.location.origin` para construir la URL de callback, y los
- * tests corren en Node (`vitest.config.ts`), donde no hay `window`.
- */
 const ORIGIN = 'http://localhost:5173'
 
 beforeEach(() => {
@@ -15,7 +11,6 @@ afterEach(() => {
 	vi.resetModules()
 })
 
-/** Usuario mínimo con la forma que entrega Supabase Auth tras entrar con Google. */
 function fakeSession(metadata: Record<string, unknown> = {full_name: 'Ada Lovelace'}) {
 	return {user: {id: 'uuid-1', email: 'ada@example.com', user_metadata: metadata}}
 }
@@ -24,23 +19,13 @@ type FakeSession = ReturnType<typeof fakeSession>
 type Listener = (event: string, session: FakeSession | null) => void
 
 interface FakeClientOptions {
-	/** Lo que devuelve `getSession()`. */
 	storedSession?: FakeSession | null
-	/**
-	 * Evento que el cliente emite en el momento de registrar el listener, como
-	 * hace `supabase-js` con `INITIAL_SESSION`.
-	 */
 	emitOnSubscribe?: {event: string; session: FakeSession | null}
 	getSessionError?: Error | null
 	signInError?: Error | null
 	signOutError?: Error | null
 }
 
-/**
- * Doble del cliente de Supabase, limitado a la superficie de `auth` que usa el
- * store. Permite además emitir eventos a mano para reproducir el orden real en
- * el que llegan las cosas al volver del proveedor.
- */
 function createFakeClient(options: FakeClientOptions = {}) {
 	const listeners: Listener[] = []
 	const signInCalls: unknown[] = []
@@ -109,21 +94,9 @@ function createFakeClient(options: FakeClientOptions = {}) {
 	}
 }
 
-/**
- * Carga el store con el cliente indicado, o sin ninguno para simular la falta de
- * credenciales.
- *
- * Hay que reiniciar el registro de módulos y volver a importar todo —incluida
- * Pinia— porque `@/lib/supabase` memoriza el cliente y expone además una
- * constante evaluada al importar el módulo. Si se reutilizara la Pinia
- * importada estáticamente, la instancia activa no sería la misma que ve el
- * store recién importado.
- */
 async function loadStore(client: ReturnType<typeof createFakeClient>['client'] | null) {
 	vi.resetModules()
 	vi.doMock('@/lib/supabase', () => ({
-		// El SDK se carga bajo demanda, así que el módulo expone una función que
-		// resuelve al cliente en lugar de la instancia ya creada.
 		getSupabase: () => Promise.resolve(client),
 		isSupabaseConfigured: client !== null,
 	}))
@@ -148,7 +121,6 @@ describe('sin credenciales de Supabase', () => {
 		expect(auth.isAuthenticated).toBe(false)
 	})
 
-	/** No se ofrece un acceso que no puede funcionar (`CLAUDE.md` §8). */
 	it('no ofrece el acceso', async () => {
 		const {auth} = await loadStore(null)
 
@@ -187,12 +159,6 @@ describe('restauración de sesión', () => {
 		expect(auth.isReady).toBe(true)
 	})
 
-	/**
-	 * `main.ts` la arranca y la pantalla de callback la vuelve a esperar. Las dos
-	 * llamadas deben compartir la misma promesa: si la segunda volviera de
-	 * inmediato, leería una sesión que todavía no existe y mandaría al usuario al
-	 * menú como invitado justo después de haber entrado.
-	 */
 	it('comparte una sola restauración entre llamadas concurrentes', async () => {
 		const fake = createFakeClient({storedSession: fakeSession()})
 		const {auth} = await loadStore(fake.client)
@@ -204,13 +170,6 @@ describe('restauración de sesión', () => {
 		expect(auth.isAuthenticated).toBe(true)
 	})
 
-	/**
-	 * La carrera del callback de OAuth. `detectSessionInUrl` canjea el código de
-	 * forma asíncrona, así que el listener puede entregar la sesión antes de que
-	 * `getSession()` resuelva —y esa lectura llega vacía—. La sesión del listener
-	 * es la buena; sobrescribirla con el nulo dejaría al usuario fuera tras un
-	 * login correcto.
-	 */
 	it('conserva la sesión del listener aunque la lectura inicial llegue vacía', async () => {
 		const fake = createFakeClient({
 			storedSession: null,
@@ -224,7 +183,6 @@ describe('restauración de sesión', () => {
 		expect(auth.displayName).toBe('Ada Lovelace')
 	})
 
-	/** Un fallo al leer la sesión no puede impedir jugar como invitado. */
 	it('queda listo aunque falle la lectura de la sesión', async () => {
 		const fake = createFakeClient({
 			getSessionError: Object.assign(new Error('storage ilegible'), {code: 'unexpected_failure'}),
@@ -302,10 +260,6 @@ describe('cerrar sesión', () => {
 		expect(auth.displayName).toBeNull()
 	})
 
-	/**
-	 * El progreso vive en memoria y es de quien estaba conectado. Si no se borrara,
-	 * se atribuiría al invitado que siguiera jugando en el mismo navegador.
-	 */
 	it('borra el progreso del usuario que se va', async () => {
 		const fake = createFakeClient({storedSession: fakeSession()})
 		const {auth, progress} = await loadStore(fake.client)
@@ -320,7 +274,6 @@ describe('cerrar sesión', () => {
 		expect(progress.practicedCount).toBe(0)
 	})
 
-	/** Si el cierre falla, la sesión sigue viva: decir lo contrario sería mentir. */
 	it('conserva la sesión y el progreso si el cierre falla', async () => {
 		const fake = createFakeClient({
 			storedSession: fakeSession(),

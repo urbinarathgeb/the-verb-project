@@ -5,31 +5,16 @@ import ChoiceButton from '@/components/ChoiceButton.vue'
 import {useAuth} from '@/composables/useAuth'
 import {readCallbackError} from '@/lib/auth'
 
-/**
- * Destino del redirect de Supabase Auth.
- *
- * No canjea nada por su cuenta: el cliente lo hace solo, porque se creó con
- * `detectSessionInUrl` (`src/lib/supabase.ts`). Esta pantalla sólo espera a que
- * la sesión quede resuelta y decide a dónde ir. Es un paso de tránsito, así que
- * en el camino feliz no debería verse más que un instante.
- */
 const router = useRouter()
 const {initialize, isAuthenticated} = useAuth()
 
-/** Mensaje del fallo, si lo hubo. Mientras sea nulo, seguimos en tránsito. */
 const failure = ref<string | null>(null)
 
 onMounted(async () => {
-	/*
-	 * Primero la URL: si el proveedor devolvió un error, no hay sesión que esperar
-	 * y el mensaje que trae es más concreto que cualquier diagnóstico posterior.
-	 */
 	failure.value = readCallbackError(window.location.search, window.location.hash)
 
 	if (failure.value !== null) return
 
-	// `initialize()` comparte promesa con la que arrancó `main.ts`, así que aquí
-	// se espera esa misma restauración en lugar de lanzar una segunda.
 	await initialize()
 
 	if (!isAuthenticated.value) {
@@ -37,8 +22,6 @@ onMounted(async () => {
 		return
 	}
 
-	// `replace` y no `push`: volver atrás debe llevar a donde estaba el usuario
-	// antes de entrar, no a una URL de callback ya consumida.
 	await router.replace({name: 'home'})
 })
 
@@ -50,16 +33,12 @@ function goHome(): void {
 <template>
 	<section class="callback">
 		<div v-if="failure === null" class="callback-card brutal-card paper-tilt-1">
-			<!-- `aria-live` para que un lector de pantalla anuncie el tránsito, que
-			     de otro modo pasa sin ninguna señal audible. -->
 			<p class="callback-status" role="status" aria-live="polite">Comprobando tu acceso…</p>
 		</div>
 
 		<div v-else class="callback-card brutal-card paper-tilt-2">
 			<h1 class="callback-heading">No se pudo entrar</h1>
 			<p class="callback-detail" role="alert">{{ failure }}</p>
-			<!-- El modo invitado siempre está disponible, así que el fallo nunca es un
-			     callejón sin salida (`CLAUDE.md` §8). -->
 			<p class="callback-hint">Puedes seguir jugando como invitado.</p>
 			<ChoiceButton variant="primary" @click="goHome">Volver al menú</ChoiceButton>
 		</div>

@@ -41,11 +41,6 @@ describe('describeMistake', () => {
 		expect(mistake?.chosen.map((choice) => choice.form)).toEqual(['present', 'past', 'participle'])
 	})
 
-	/**
-	 * Al fallar se eligen celdas de hasta tres verbos distintos, así que no existe
-	 * «la» tríada correcta: mostrarlas todas es lo que revela dónde estaba la
-	 * confusión.
-	 */
 	it('devuelve la tríada de cada verbo implicado', () => {
 		const mistake = describeMistake(
 			[createCell(GO, 'present'), createCell(EAT, 'past'), createCell(BE, 'participle')],
@@ -64,7 +59,6 @@ describe('describeMistake', () => {
 		expect(mistake?.triads).toEqual([GO, EAT])
 	})
 
-	/** Media explicación confunde más que ninguna. */
 	it('descarta un intento incompleto', () => {
 		expect(describeMistake([createCell(GO, 'present')], CATALOG)).toBeNull()
 		expect(describeMistake([], CATALOG)).toBeNull()
@@ -77,7 +71,6 @@ describe('describeMistake', () => {
 		)
 
 		expect(mistake?.triads).toEqual([GO])
-		// Lo elegido se conserva entero: es lo que el jugador hizo.
 		expect(mistake?.chosen).toHaveLength(3)
 	})
 })

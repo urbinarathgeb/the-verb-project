@@ -12,7 +12,6 @@ afterEach(() => {
 	vi.useRealTimers()
 })
 
-/** Avanza el reloj simulado, disparando los ticks intermedios. */
 function advance(ms: number): void {
 	vi.advanceTimersByTime(ms)
 }
@@ -61,12 +60,6 @@ describe('useTimer — cronómetro ascendente', () => {
 		expect(timer.isRunning.value).toBe(true)
 	})
 
-	/**
-	 * Entre ticks el valor se queda en la última lectura: con `tickMs` de 100 ms,
-	 * a los 250 ms muestra 200. Es deliberado —leer el reloj dentro del `computed`
-	 * lo volvería impuro y no se invalidaría—, y para el HUD basta con refrescar
-	 * diez veces por segundo.
-	 */
 	it('el valor mostrado avanza a la granularidad del tick', () => {
 		const timer = useTimer()
 		timer.start()
@@ -85,11 +78,6 @@ describe('useTimer — cronómetro ascendente', () => {
 		expect(timer.elapsedMs.value).toBe(250)
 	})
 
-	/**
-	 * Aquí se ve que el tiempo se mide contra el reloj del sistema y no sumando
-	 * disparos del intervalo: al pausar entre dos ticks el valor es exacto al
-	 * milisegundo, mientras que un contador que acumulara intervalos daría 1200.
-	 */
 	it('el valor es exacto al pausar, sin esperar al siguiente tick', () => {
 		const timer = useTimer()
 		timer.start()
@@ -150,7 +138,6 @@ describe('useTimer — cuenta regresiva', () => {
 		expect(onExpire).not.toHaveBeenCalled()
 	})
 
-	/** El intervalo se detiene al expirar, así que no puede volver a dispararse. */
 	it('invoca `onExpire` una sola vez aunque siga corriendo el reloj', () => {
 		const onExpire = vi.fn()
 		const timer = useTimer({limitMs: 5 * SECOND, onExpire})
@@ -161,10 +148,6 @@ describe('useTimer — cuenta regresiva', () => {
 		expect(onExpire).toHaveBeenCalledTimes(1)
 	})
 
-	/**
-	 * El tick que detecta la expiración puede llegar hasta 100 ms tarde. El tiempo
-	 * registrado debe ser el límite exacto: es el `timeMs` que va al ranking.
-	 */
 	it('el tiempo registrado al expirar es exactamente el límite', () => {
 		const timer = useTimer({limitMs: 10 * SECOND})
 		timer.start()
@@ -174,11 +157,6 @@ describe('useTimer — cuenta regresiva', () => {
 		expect(timer.elapsedMs.value).toBe(10 * SECOND)
 	})
 
-	/**
-	 * Con un límite que no cae en un múltiplo del tick, el tick que detecta la
-	 * expiración llega pasado el límite. Sin acotar, el tiempo registrado sería el
-	 * del tick (10 100 ms) en vez del límite real.
-	 */
 	it('acota el tiempo aunque el límite no caiga en un tick', () => {
 		const timer = useTimer({limitMs: 10 * SECOND + 50})
 		timer.start()
@@ -346,11 +324,6 @@ describe('useTimer — penalizaciones', () => {
 		expect(timer.remainingMs.value).toBe(78 * SECOND)
 	})
 
-	/**
-	 * El tiempo registrado incluye las penalizaciones: si no contaran para el
-	 * ranking, fallar saldría gratis al jugador que igualmente llega al objetivo
-	 * (`MECHANICS.md` §2).
-	 */
 	it('la penalización cuenta como tiempo consumido', () => {
 		const timer = useTimer()
 		timer.start()
@@ -394,11 +367,6 @@ describe('useTimer — penalizaciones', () => {
 		expect(timer.elapsedMs.value).toBe(5 * SECOND)
 	})
 
-	/**
-	 * Una penalización puede agotar el tiempo por sí sola. Debe detectarse en el
-	 * acto y no en el siguiente tick, porque entre medias el jugador podría seguir
-	 * emparejando con el reloj ya a cero.
-	 */
 	it('una penalización que agota el límite expira de inmediato', () => {
 		const onExpire = vi.fn()
 		const timer = useTimer({limitMs: 10 * SECOND, onExpire})
@@ -413,10 +381,6 @@ describe('useTimer — penalizaciones', () => {
 		expect(timer.remainingMs.value).toBe(0)
 	})
 
-	/**
-	 * Tras expirar, el intervalo ya está detenido, pero `penalize` sigue siendo
-	 * invocable desde fuera. No debe volver a disparar el fin de la partida.
-	 */
 	it('penalizar después de expirar no vuelve a invocar `onExpire`', () => {
 		const onExpire = vi.fn()
 		const timer = useTimer({limitMs: 5 * SECOND, onExpire})
@@ -440,10 +404,6 @@ describe('useTimer — penalizaciones', () => {
 })
 
 describe('useTimer — limpieza', () => {
-	/**
-	 * Si el intervalo sobreviviera al componente, seguiría disparando tras salir
-	 * de la partida y mantendría vivo el composable entero.
-	 */
 	it('detiene el intervalo al destruirse el scope', () => {
 		const scope = effectScope()
 		const timer = scope.run(() => {
@@ -487,10 +447,6 @@ describe('useTimer — límite reactivo', () => {
 		expect(timer.remainingMs.value).toBe(10 * SECOND)
 	})
 
-	/**
-	 * El store crea el reloj antes de saber el modo y el nivel; el límite sólo se
-	 * conoce al arrancar la partida.
-	 */
 	it('recalcula el tiempo restante al cambiar el límite', () => {
 		const limit = shallowRef<number | null>(null)
 		const timer = useTimer({limitMs: limit})

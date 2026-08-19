@@ -5,22 +5,10 @@ import ChoiceButton from '@/components/ChoiceButton.vue'
 import {useAuth} from '@/composables/useAuth'
 import {useProgress} from '@/composables/useProgress'
 
-/**
- * Qué verbos domina el jugador y cuáles se le resisten.
- *
- * El progreso ya se calculaba y se guardaba entero —`user_progress`, verbos
- * dominados, porcentaje por verbo— y lo único que se veía era un contador en el
- * HUD del Dojo: la promesa central de `PRODUCT.md` estaba construida y era
- * invisible (`PLAN.md`, Bitácora, D13).
- *
- * La lista responde a «qué se me da mal», así que va ordenada por lo peor
- * primero y omite lo que nunca se ha practicado.
- */
 const router = useRouter()
 const {rows, summary, loadProgress} = useProgress()
 const {isAuthenticated, isReady} = useAuth()
 
-/** Porcentaje redondeado, ya con su símbolo. */
 function percent(accuracy: number): string {
 	return `${Math.round(accuracy * 100)} %`
 }
@@ -34,8 +22,6 @@ function goToDojo(): void {
 }
 
 onMounted(() => {
-	// Sin sesión no hay nada que traer y la llamada vuelve sola: el progreso de
-	// invitado vive en memoria (`CLAUDE.md` §8).
 	void loadProgress()
 })
 </script>
@@ -61,7 +47,6 @@ onMounted(() => {
 			</div>
 		</dl>
 
-		<!-- Estado vacío que dice cómo dejar de estarlo, no sólo que lo está. -->
 		<div v-if="rows.length === 0" class="progress-empty brutal-card">
 			<p class="progress-empty-title">Todavía no has practicado ningún verbo</p>
 			<p class="progress-empty-hint">
@@ -105,7 +90,6 @@ onMounted(() => {
 									{{ row.progress.correct }}/{{ row.progress.correct + row.progress.wrong }}
 								</span>
 							</td>
-							<!-- Texto además del color: el color solo no basta (WCAG 1.4.1). -->
 							<td class="progress-numeric">{{ row.isMastered ? 'Dominado' : 'En curso' }}</td>
 						</tr>
 					</tbody>
@@ -206,7 +190,6 @@ onMounted(() => {
 	font-size: var(--text-caption);
 }
 
-/* La tabla se desplaza dentro de su caja; la página nunca en horizontal. */
 .progress-scroll {
 	width: 100%;
 	max-width: 44rem;
@@ -266,9 +249,6 @@ onMounted(() => {
 	overflow-wrap: anywhere;
 }
 
-/* Dentro de la misma celda de encabezado de fila: así el lector de pantalla lo
-   asocia a la fila entera y la tabla no gana una cuarta columna, que en móvil la
-   estrecharía. */
 .progress-meaning {
 	display: block;
 	font-size: var(--text-micro);
@@ -281,7 +261,6 @@ onMounted(() => {
 	opacity: 0.7;
 }
 
-/* Lo dominado se atenúa para que destaque lo que aún hay que trabajar. */
 .progress-mastered {
 	background-color: var(--color-paper-dim);
 }

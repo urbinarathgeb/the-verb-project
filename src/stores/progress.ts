@@ -4,34 +4,13 @@ import {accuracyOf, emptyProgress, isMastered, type VerbProgress} from '@/lib/pr
 import {getSupabase} from '@/lib/supabase'
 import {useAuthStore} from '@/stores/auth'
 
-/**
- * Progreso del usuario por verbo, alimentado por el Dojo
- * (`MECHANICS.md` §4 y §6).
- *
- * Sin sesión vive sólo en memoria y se pierde al recargar: es el modo invitado
- * funcionando (`CLAUDE.md` §8). Con sesión se sincroniza contra la tabla
- * `user_progress` de Supabase.
- *
- * **La sincronización va por incrementos, no por totales.** Cada respuesta se
- * acumula en `pending` y se envía como «suma esto a lo que ya haya» a la función
- * `record_practice_progress`. Mandar totales absolutos calculados desde la copia
- * local haría que practicar en dos dispositivos sin recargar borrara lo
- * aprendido en el otro.
- */
-
-/** Incrementos aún no enviados al servidor, por verbo. */
 export interface PendingDelta {
 	readonly hits: number
 	readonly misses: number
 }
 
-/**
- * Qué pasó al intentar sincronizar. `empty` y `guest` no son fallos: significan
- * que no había nada que enviar o que no hay a quién atribuirlo.
- */
 export type SyncOutcome = 'saved' | 'empty' | 'guest' | 'offline' | 'error'
 
-/** Suma dos colas de incrementos, verbo a verbo. */
 function mergeDeltas(
 	left: Record<number, PendingDelta>,
 	right: Record<number, PendingDelta>,
@@ -51,13 +30,8 @@ function mergeDeltas(
 export {accuracyOf, isMastered, type VerbProgress}
 
 export const useProgressStore = defineStore('progress', () => {
-	/**
-	 * Progreso indexado por `verbId`. Es un `Record` y no un `Map` porque es la
-	 * forma que se serializa directamente hacia `user_progress` en la Fase 5.
-	 */
 	const entries = ref<Record<number, VerbProgress>>({})
 
-	/** Incrementos pendientes de enviar, por verbo. */
 	const pending = ref<Record<number, PendingDelta>>({})
 	const isSyncing = ref(false)
 	const syncError = ref<string | null>(null)
@@ -76,7 +50,6 @@ export const useProgressStore = defineStore('progress', () => {
 		allProgress.value.reduce((sum, progress) => sum + progress.wrong, 0),
 	)
 
-	/** Porcentaje global de aciertos de la práctica, de 0 a 1. */
 	const overallAccuracy = computed(() => {
 		const total = totalCorrect.value + totalWrong.value
 
@@ -89,12 +62,10 @@ export const useProgressStore = defineStore('progress', () => {
 
 	const masteredCount = computed(() => masteredVerbIds.value.length)
 
-	/** Progreso de un verbo concreto, aunque nunca se haya practicado. */
 	function progressFor(verbId: number): VerbProgress {
 		return entries.value[verbId] ?? emptyProgress(verbId)
 	}
 
-	/** Registra una respuesta del Dojo sobre un verbo. */
 	function recordAnswer(verbId: number, isCorrect: boolean): void {
 		const current = progressFor(verbId)
 
@@ -108,9 +79,6 @@ export const useProgressStore = defineStore('progress', () => {
 			},
 		}
 
-		// El incremento se acumula siempre, también sin sesión: si el jugador entra
-		// a mitad de sesión, `syncPending` no tendrá nada que enviar porque
-		// `loadProgress` limpia lo de invitado, y eso es lo correcto.
 		const delta = pending.value[verbId] ?? {hits: 0, misses: 0}
 
 		pending.value = {
@@ -122,13 +90,6 @@ export const useProgressStore = defineStore('progress', () => {
 		}
 	}
 
-	/**
-	 * Envía los incrementos acumulados.
-	 *
-	 * Se vacía `pending` **antes** de la petición y se restituye si falla, para
-	 * que las respuestas dadas mientras la petición está en vuelo no se pierdan al
-	 * volver ni se envíen dos veces.
-	 */
 	async function syncPending(): Promise<SyncOutcome> {
 		const client = await getSupabase()
 		if (client === null) return 'offline'
@@ -153,8 +114,6 @@ export const useProgressStore = defineStore('progress', () => {
 		isSyncing.value = false
 
 		if (error !== null) {
-			// Se devuelven los incrementos a la cola, sumándolos a lo que haya
-			// llegado entretanto en lugar de sobrescribirlo.
 			pending.value = mergeDeltas(inFlight, pending.value)
 			syncError.value = 'No se pudo guardar tu progreso. Se reintentará.'
 
@@ -166,13 +125,6 @@ export const useProgressStore = defineStore('progress', () => {
 		return 'saved'
 	}
 
-	/**
-	 * Carga el progreso guardado y **descarta** lo que hubiera en memoria.
-	 *
-	 * Descartar es deliberado: si alguien practicó como invitado y luego inició
-	 * sesión, ese progreso no es suyo —o al menos no se pidió atribuírselo— y
-	 * subirlo falsearía sus estadísticas.
-	 */
 	async function loadProgress(): Promise<void> {
 		const client = await getSupabase()
 		if (client === null) return
@@ -200,22 +152,17 @@ export const useProgressStore = defineStore('progress', () => {
 		pending.value = {}
 	}
 
-	/** Borra todo el progreso, incluidos los incrementos sin enviar. */
 	function resetProgress(): void {
 		entries.value = {}
-		// Vaciar la cola es imprescindible: si no, el progreso de quien acaba de
-		// cerrar sesión se subiría a la cuenta del siguiente que entre.
 		pending.value = {}
 		syncError.value = null
 	}
 
 	return {
-		// Estado
 		entries,
 		pending,
 		isSyncing,
 		syncError,
-		// Derivados
 		allProgress,
 		practicedCount,
 		totalCorrect,
@@ -224,7 +171,6 @@ export const useProgressStore = defineStore('progress', () => {
 		masteredVerbIds,
 		masteredCount,
 		hasPendingChanges,
-		// Acciones
 		progressFor,
 		recordAnswer,
 		syncPending,

@@ -4,22 +4,12 @@ import {formatDuration, formatPace} from '@/lib/format'
 import type {RankingEntry} from '@/lib/ranking'
 import type {GameMode} from '@/types/game'
 
-/**
- * Tabla de clasificación. Componente puro: recibe las posiciones ya calculadas y
- * no sabe de dónde salen (`CLAUDE.md` §7).
- *
- * Se usa una `<table>` de verdad y no una rejilla de `div`s porque es una tabla:
- * así un lector de pantalla anuncia «fila 3, Tiempo, 42 s» en lugar de leer
- * números sueltos sin saber a qué columna pertenecen.
- */
 const props = defineProps<{
 	entries: readonly RankingEntry[]
 	mode: GameMode
-	/** Para destacar la fila propia, si el jugador aparece en la tabla. */
 	currentUserId?: string | null
 }>()
 
-/** La columna que decide la clasificación cambia por modo (`MECHANICS.md` §2 y §3). */
 const metricLabel = computed(() => (props.mode === 'target' ? 'Tiempo' : 'Ritmo'))
 
 const secondaryLabel = computed(() => (props.mode === 'target' ? 'Errores' : 'Aciertos'))
@@ -32,7 +22,6 @@ function secondaryValue(entry: RankingEntry): string {
 	return props.mode === 'target' ? entry.errors.toString() : entry.verbsMatched.toString()
 }
 
-/** Avatares que no cargaron; ver la misma nota en `HomeScreen`. */
 const failedAvatars = ref<string[]>([])
 
 function showAvatar(entry: RankingEntry): boolean {
@@ -67,12 +56,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 					:class="{'ranking-own': entry.userId === currentUserId}"
 				>
 					<td class="ranking-numeric">{{ entry.position }}</td>
-					<!--
-						La celda conserva su `display` de tabla y el `flex` vive en un `div`
-						interior: cambiar el `display` de un `th` lo saca del modelo de tabla
-						en varios motores, y con él se pierde el «fila 3, Jugador» que esta
-						tabla existe para dar.
-					-->
 					<th scope="row">
 						<div class="ranking-player">
 							<img
@@ -86,7 +69,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 								@error="markAvatarFailed(entry)"
 							/>
 							<span class="ranking-name">{{ entry.displayName }}</span>
-							<!-- Marca textual además del color: el color solo no basta (WCAG 1.4.1). -->
 							<span v-if="entry.userId === currentUserId" class="ranking-you">tú</span>
 						</div>
 					</th>
@@ -99,7 +81,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 </template>
 
 <style scoped>
-/* La tabla se desplaza dentro de su caja; la página nunca en horizontal. */
 .ranking-scroll {
 	width: 100%;
 	max-width: 44rem;
@@ -109,13 +90,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 	background-color: var(--color-card);
 }
 
-/*
- * `table-layout: fixed` reparte el ancho por las anchuras declaradas en vez de
- * por el contenido. Es lo que hace que un nombre largo se recorte con puntos
- * suspensivos en lugar de estirar su columna: sin esto, en móvil el nombre
- * empujaba «Tiempo» fuera de la pantalla, y el tiempo es justo la métrica que
- * ordena la tabla.
- */
 .ranking-table {
 	width: 100%;
 	table-layout: fixed;
@@ -127,15 +101,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 	width: 2.25rem;
 }
 
-/*
- * Anchas lo justo para que quepa «ACIERTOS», el encabezado más largo: como van
- * en `nowrap`, una columna más estrecha desbordaría la tabla en móvil.
- *
- * Lo que decide este número es el **encabezado**, no el dato, que es de uno a
- * cinco caracteres. Por eso se compacta el encabezado en móvil justo debajo: lo
- * que se libera aquí es lo que deja de recortar el nombre del jugador, que a
- * 375px se quedaba en «Javier …» mientras estas columnas iban holgadas.
- */
 .ranking-table .ranking-metric-column {
 	width: 4rem;
 }
@@ -152,8 +117,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 
 .ranking-table th,
 .ranking-table td {
-	/* El relleno horizontal es el segundo sitio de donde sale ancho para el
-	   nombre: cuatro columnas lo pagan dos veces cada una. */
 	padding: calc(var(--spacing-gutter) / 3);
 	text-align: left;
 	border-bottom: 2px solid var(--color-ink);
@@ -162,8 +125,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 .ranking-table thead th {
 	font-family: var(--font-display);
 	text-transform: uppercase;
-	/* Compacto en móvil, como las etiquetas del HUD; el bloque de escritorio de
-	   abajo restaura el tamaño del sistema en cuanto hay ancho. */
 	font-size: var(--text-micro);
 	letter-spacing: 0;
 	background-color: var(--color-cyan);
@@ -191,11 +152,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 	border-bottom: none;
 }
 
-/*
- * Se cualifica con `.ranking-table` para ganarle en especificidad a la regla
- * `.ranking-table th, .ranking-table td` de arriba, que alinea a la izquierda.
- * Sin eso la alineación a la derecha no se aplica y las cifras no cuadran.
- */
 .ranking-table .ranking-numeric {
 	text-align: right;
 	font-variant-numeric: tabular-nums;
@@ -207,7 +163,6 @@ function markAvatarFailed(entry: RankingEntry): void {
 	align-items: center;
 	gap: calc(var(--spacing-gutter) / 3);
 	font-weight: 500;
-	/* Hereda el recorte de la celda para que el nombre siga elipsándose. */
 	min-width: 0;
 }
 

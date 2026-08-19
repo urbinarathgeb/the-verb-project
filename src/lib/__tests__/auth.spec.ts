@@ -7,7 +7,6 @@ import {
 	readCallbackError,
 } from '../auth'
 
-/** Usuario mínimo con los metadatos indicados. */
 function userWith(metadata: Record<string, unknown>, email?: string) {
 	return {id: 'uuid-1', email, user_metadata: metadata}
 }
@@ -21,7 +20,6 @@ describe('identityFromUser', () => {
 		expect(identity.displayName).toBe('Ada Lovelace')
 	})
 
-	/** Google reparte el nombre entre dos claves según el flujo del token. */
 	it('cae a `name` si no hay `full_name`', () => {
 		expect(identityFromUser(userWith({name: 'Ada'})).displayName).toBe('Ada')
 	})
@@ -36,10 +34,6 @@ describe('identityFromUser', () => {
 		expect(identityFromUser(userWith({})).displayName).toBe(FALLBACK_DISPLAY_NAME)
 	})
 
-	/**
-	 * Un nombre en blanco es peor que ausente: pasa los respaldos y deja una fila
-	 * sin nombre en el ranking. Debe tratarse como si no estuviera.
-	 */
 	it('ignora los nombres vacíos o de sólo espacios', () => {
 		const identity = identityFromUser(userWith({full_name: '   ', name: 'Ada'}))
 
@@ -66,7 +60,6 @@ describe('identityFromUser', () => {
 		expect(identity.avatarUrl).toBe('https://example.com/a.png')
 	})
 
-	/** Google usa `picture` en el token; Supabase no siempre lo renombra. */
 	it('cae a `picture` si no hay `avatar_url`', () => {
 		const identity = identityFromUser(userWith({picture: 'https://example.com/p.png'}))
 
@@ -119,11 +112,6 @@ describe('readCallbackError', () => {
 		expect(message).toContain('Google denegó el acceso')
 	})
 
-	/**
-	 * El fragmento se mira porque el flujo implícito y algunos errores de Supabase
-	 * responden ahí. Mirar sólo la query dejaría el fallo invisible, y un fallo
-	 * invisible en el callback se ve como un acceso que no hace nada.
-	 */
 	it('lee el error del fragmento', () => {
 		const message = readCallbackError('', '#error=server_error&error_description=Boom')
 

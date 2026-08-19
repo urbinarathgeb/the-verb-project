@@ -8,15 +8,6 @@ import {useProgress} from '@/composables/useProgress'
 import {ONBOARDING_SECTIONS, ONBOARDING_TITLE} from '@/data/onboarding'
 import {VERBS} from '@/data/verbs'
 
-/**
- * Portada.
- *
- * Dejó de ser el menú de selección: elegir modo y nivel vive ahora en
- * `/setup` (`PLAN.md`, Bitácora, D14). Lo que hace aquí no es sólo llevar a
- * jugar, porque una pantalla cuyo único contenido es una marca y unos botones es
- * una pantalla de trámite. Muestra **cuánto llevas aprendido**, que es la
- * promesa de `PRODUCT.md` y hasta ahora estaba escondida tras un botón.
- */
 const router = useRouter()
 
 const {
@@ -33,29 +24,12 @@ const {
 
 const {summary, loadProgress} = useProgress()
 
-/**
- * Avatar que no cargó.
- *
- * Las URLs de `lh3.googleusercontent.com` fallan en la práctica —caducan, tienen
- * límites de tasa, o el usuario quitó la foto— y entonces el navegador dibuja su
- * icono de imagen rota, que parece un fallo de la app. Se guarda la URL en lugar
- * de un booleano para que otra distinta tenga su propia oportunidad.
- */
 const failedAvatarUrl = ref<string | null>(null)
 
 const showAvatar = computed(
 	() => avatarUrl.value !== null && avatarUrl.value !== failedAvatarUrl.value,
 )
 
-/**
- * Qué enseña la portada bajo la marca.
- *
- * Son tres situaciones distintas y no dos: quien ya practicó ve sus números,
- * quien tiene sesión pero no ha empezado necesita saber por dónde, y quien juega
- * como invitado no tiene progreso que mostrar porque no se guarda nada
- * (`CLAUDE.md` §8). Sin este tercer caso, el primerizo se encontraría tres ceros
- * y ninguna explicación.
- */
 const state = computed(() => {
 	if (!isAuthenticated.value) return 'guest'
 
@@ -68,48 +42,30 @@ const stats = computed(() => [
 	{label: 'Aciertos', value: `${Math.round(summary.value.accuracy * 100)} %`, of: 'del total'},
 ])
 
-/**
- * Onboarding. Se abre sólo al pulsar el botón: no se guarda ninguna marca de
- * «ya lo vi», porque el modo invitado no persiste nada (`CLAUDE.md` §8) y una
- * excepción para esto no compensa.
- */
 const isHelpOpen = ref(false)
 
 function goToSetup(): void {
 	router.push({name: 'setup'})
 }
 
-/** La clasificación es pública: se puede consultar sin haber iniciado sesión. */
 function goToRanking(): void {
 	router.push({name: 'ranking'})
 }
 
-/** El progreso del Dojo. Como invitado existe, pero sólo mientras dure la sesión. */
 function goToProgress(): void {
 	router.push({name: 'progress'})
 }
 
 onMounted(() => {
-	// Sin sesión no hay nada que traer y la llamada vuelve sola.
 	void loadProgress()
 })
 </script>
 
 <template>
 	<section class="home">
-		<!--
-			Cuenta. Va arriba, que es donde se busca la sesión por convención: al final
-			de la pantalla quedaba a 326px por debajo del pliegue en un móvil, invisible
-			salvo que alguien se desplazara hasta el fondo del menú.
-
-			Se reserva el hueco desde el principio (`min-height`) para que resolver la
-			sesión no desplace el contenido justo cuando el jugador va a pulsar «Jugar».
-		-->
 		<div v-if="canSignIn" class="home-account">
 			<template v-if="isReady">
 				<div v-if="isAuthenticated" class="home-account-row">
-					<!-- `alt` vacío a propósito: el nombre va justo al lado, así que
-					     describir el avatar sería redundante para un lector de pantalla. -->
 					<img
 						v-if="showAvatar"
 						:src="avatarUrl ?? ''"
@@ -144,10 +100,6 @@ onMounted(() => {
 			<p class="home-tagline">Empareja presente, pasado y participio.</p>
 		</header>
 
-		<!--
-			El estado del jugador. Es lo que evita que esta pantalla sea un trámite
-			por el que se pasa sin hacer nada.
-		-->
 		<dl v-if="state === 'progress'" class="home-progress">
 			<div v-for="stat in stats" :key="stat.label" class="home-stat brutal-card">
 				<dt class="home-stat-label">{{ stat.label }}</dt>
@@ -178,11 +130,6 @@ onMounted(() => {
 			</ChoiceButton>
 		</div>
 
-		<!--
-			Descartable: es informativo, así que se cierra con `Esc`, con el fondo y
-			con su botón. `GameModal` ya aporta el `Teleport`, la trampa de foco y la
-			restauración al cerrar.
-		-->
 		<GameModal
 			:open="isHelpOpen"
 			:title="ONBOARDING_TITLE"
@@ -191,7 +138,6 @@ onMounted(() => {
 			@close="isHelpOpen = false"
 		>
 			<div class="home-help">
-				<!-- `h3` porque el título del modal es un `h2`: la jerarquía no salta. -->
 				<section v-for="section in ONBOARDING_SECTIONS" :key="section.title">
 					<h3 class="home-help-title">{{ section.title }}</h3>
 					<p v-for="line in section.body" :key="line" class="home-help-line">{{ line }}</p>
@@ -215,24 +161,9 @@ onMounted(() => {
 	justify-content: flex-start;
 	gap: calc(var(--spacing-gutter) / 2);
 	padding: var(--spacing-screen-mobile);
-	/* La portada puede desbordar en pantallas muy bajas; el tablero nunca. */
 	overflow-y: auto;
 }
 
-/*
- * Dos anclajes, no uno.
- *
- * La cuenta y la marca se quedan **arriba**: son identidad y estado, y su sitio
- * es el borde superior de la pantalla, no el centro. Lo que se centra en el
- * espacio que sobra es el bloque de decisión —lo que llevas aprendido y los
- * botones—, que es donde va la mirada y el pulgar.
- *
- * Se hace con márgenes automáticos y no con `justify-content: center` porque
- * este contenedor también desplaza: centrar así reparte el desbordamiento arriba
- * y abajo, y como `scrollTop` no puede ser negativo, la mitad superior quedaría
- * inalcanzable. Cuando el contenido no cabe, los `auto` valen cero y todo se
- * ancla arriba, que es exactamente lo que hace falta.
- */
 .home-progress,
 .home-pitch {
 	margin-block-start: auto;
@@ -271,8 +202,6 @@ onMounted(() => {
 	display: flex;
 	flex-direction: column;
 	align-items: center;
-	/* Alineadas por arriba: los rótulos de la fila deben leerse a la misma altura
-	   aunque el pie de cada tarjeta tenga distinto largo. */
 	justify-content: flex-start;
 	gap: 2px;
 	flex: 1 1 5rem;
@@ -304,7 +233,6 @@ onMounted(() => {
 .home-pitch {
 	width: 100%;
 	max-width: 32rem;
-	/* Separado de los botones, no pegado: encabeza el bloque, no es su subtítulo. */
 	margin-block-end: calc(var(--spacing-gutter) / 2);
 	font-size: var(--text-caption);
 	text-align: center;
@@ -313,8 +241,6 @@ onMounted(() => {
 .home-actions {
 	display: flex;
 	flex-direction: column;
-	/* Los botones respiran entre sí más que los bloques de arriba: son la zona de
-	   toque y conviene que no se lean como una lista apretada. */
 	gap: calc(var(--spacing-gutter) / 2);
 	width: 100%;
 	max-width: 32rem;
@@ -334,13 +260,7 @@ onMounted(() => {
 	gap: calc(var(--spacing-gutter) / 3);
 	width: 100%;
 	max-width: 32rem;
-	/*
-	 * No se encoge: como hijo de un contenedor flex en columna, el reparto de
-	 * espacio lo comprimía por debajo de su contenido y la última línea quedaba
-	 * fuera de la caja, sin contar para el scroll de la pantalla.
-	 */
 	flex-shrink: 0;
-	/* Alto del contenido resuelto, para que aparecer no desplace la portada. */
 	min-height: var(--spacing-touch);
 }
 
@@ -350,20 +270,9 @@ onMounted(() => {
 	gap: calc(var(--spacing-gutter) / 3);
 }
 
-/*
- * El botón de la franja va más estrecho que un botón de acción normal: con el
- * relleno del sistema, «Juegas como invitado» y «Entrar con Google» sumaban
- * 350px en una fila de 343 y el nombre se recortaba a «Juegas como i…». El alto
- * táctil de 44px no se toca; sólo cede el aire lateral.
- */
 .home-account-row > :last-child {
 	flex: 0 0 auto;
 	padding-inline: calc(var(--spacing-gutter) / 2);
-	/*
-	 * Y con la etiqueta un escalón por debajo del botón de acción, que es lo que
-	 * es: una acción secundaria en una franja de estado, no el botón por el que se
-	 * entra a la app.
-	 */
 	font-size: var(--text-caption);
 	letter-spacing: 0.02em;
 }
@@ -376,15 +285,9 @@ onMounted(() => {
 }
 
 .home-account-name {
-	/*
-	 * El nombre cede el ancho, no el botón. Con el reparto al revés, «Entrar con
-	 * Google» se quedaba sin sitio y partía en dos líneas, y una franja de 44px
-	 * pasaba a medir 72 en la zona más cara de la pantalla.
-	 */
 	flex: 1 1 auto;
 	min-width: 0;
 	font-size: var(--text-caption);
-	/* Los nombres de Google pueden ser largos; recortar antes que romper la fila. */
 	overflow: hidden;
 	text-overflow: ellipsis;
 	white-space: nowrap;

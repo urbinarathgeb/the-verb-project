@@ -16,11 +16,6 @@ import {VERBS, getVerbsForDifficulty} from '@/data/verbs'
 import {getLevelConfig} from '@/data/levels'
 import {DIFFICULTIES, type Cell, type Selection} from '@/types/game'
 
-/**
- * Verbos sintéticos en lugar del catálogo real: el tablero no debe depender del
- * contenido de `verbs.json`, y con textos predecibles los fallos se leen mejor.
- * La integración con el catálogo real se comprueba en el último bloque.
- */
 function makeVerb(id: number): Verb {
 	return {
 		id,
@@ -36,7 +31,6 @@ function makeVerbs(count: number): Verb[] {
 	return Array.from({length: count}, (_, index) => makeVerb(index + 1))
 }
 
-/** Los ids de los verbos de una columna, en el orden en que se muestran. */
 function orderOf(cells: readonly {verbId: number}[]): number[] {
 	return cells.map((cell) => cell.verbId)
 }
@@ -60,11 +54,6 @@ describe('createCell', () => {
 		expect(createCell(verb, form).text).toBe(verb[form])
 	})
 
-	/**
-	 * El invariante que protege la mecánica: si el significado apareciera en las
-	 * tres columnas, emparejar se reduciría a buscar la misma palabra tres veces
-	 * y el juego dejaría de exigir saber las formas (`MECHANICS.md` §1).
-	 */
 	it('pone el significado en la celda de presente', () => {
 		expect(createCell(verb, 'present').meaning).toBe(verb.meaning)
 	})
@@ -99,11 +88,6 @@ describe('createBoard', () => {
 		}
 	})
 
-	/**
-	 * Ésta es la invariante estructural del tablero: si faltara una celda o
-	 * hubiera una repetida, una tríada sería imposible de completar o habría dos
-	 * caminos para resolver el mismo verbo.
-	 */
 	it('existe exactamente una celda por cada par (verbo, forma)', () => {
 		const {columns} = createBoard(makeVerbs(20), 10, createSeededRng(3))
 		const allCells = VERB_FORMS.flatMap((form) => columns[form])
@@ -120,12 +104,6 @@ describe('createBoard', () => {
 		expect(new Set(orderOf(columns.participle))).toEqual(present)
 	})
 
-	/**
-	 * La razón de barajar cada columna por separado (`MECHANICS.md` §1) es que la
-	 * fila no delate la correspondencia. Con `N = 3` un barajado uniforme haría
-	 * coincidir dos columnas en 1 de cada 6 intentos, así que sobre 200 semillas
-	 * este test detecta de inmediato la ausencia del rechazo de órdenes repetidos.
-	 */
 	it('nunca deja dos columnas con el mismo orden de verbos', () => {
 		const verbs = makeVerbs(3)
 
@@ -215,11 +193,6 @@ describe('createBoard', () => {
 			expect(createBoard(makeVerbs(10), 4.7, createSeededRng(1)).columns.present).toHaveLength(4)
 		})
 
-		/**
-		 * Con un solo verbo no existe ningún orden alternativo, así que el rechazo
-		 * de órdenes repetidos no puede satisfacerse. Debe agotar sus reintentos y
-		 * devolver el tablero, nunca quedarse colgado.
-		 */
 		it('termina con un tablero de un único verbo', () => {
 			const {columns} = createBoard(makeVerbs(1), 1, createSeededRng(1))
 
@@ -307,7 +280,6 @@ describe('getSelectedCells', () => {
 describe('isMatchingTriad', () => {
 	const {columns} = createBoard(makeVerbs(10), 6, createSeededRng(3))
 
-	/** Las tres celdas del verbo `verbId`, una por columna. */
 	function triadOf(verbId: number): [Cell, Cell, Cell] {
 		const cells = getSelectedCells(columns, {
 			present: createCellId(verbId, 'present'),
@@ -333,10 +305,6 @@ describe('isMatchingTriad', () => {
 		expect(isMatchingTriad([first[0], first[1], second[2]])).toBe(false)
 	})
 
-	/**
-	 * La validación es por identidad, no por texto (`MECHANICS.md` §1). Dos verbos
-	 * distintos que compartieran la misma cadena no deben pasar por correctos.
-	 */
 	it('no valida por texto: mismas cadenas con ids distintos no son tríada', () => {
 		const first = triadOf(columns.present[0]?.verbId ?? 0)
 		const impostor: Cell = {...first[2], verbId: -1, id: 'impostor'}
@@ -365,7 +333,6 @@ describe('getCellStatus', () => {
 		expect(getCellStatus(cell, empty, [], [cell.verbId])).toBe('resolved')
 	})
 
-	/** El error es feedback inmediato: debe verse por encima de cualquier otro estado. */
 	it('el error tiene prioridad sobre la selección', () => {
 		expect(getCellStatus(cell, {...empty, past: cell.id}, [cell.id], [])).toBe('error')
 	})
@@ -375,10 +342,8 @@ describe('refillSlots', () => {
 	const verbs = makeVerbs(10)
 	const {columns, pool} = createBoard(verbs, 6, createSeededRng(4))
 	const incoming = pool[0] as Verb
-	/** El verbo de la primera fila de presente, como si acabara de acertarse. */
 	const resolvedId = (columns.present[0] as Cell).verbId
 
-	/** El camino que se olvida: las celdas repuestas también llevan significado. */
 	it('da significado a la celda de presente que entra, y sólo a ésa', () => {
 		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(1))
 		const entrante = (form: VerbForm) =>
@@ -406,10 +371,6 @@ describe('refillSlots', () => {
 		for (const form of VERB_FORMS) expect(next[form]).toHaveLength(6)
 	})
 
-	/**
-	 * Es LA diferencia con la mecánica anterior, que intercambiaba dos posiciones
-	 * por columna: el jugador perdía de vista una celda que acababa de localizar.
-	 */
 	it('no mueve ninguna celda ocupada: sólo cambia la casilla libre', () => {
 		const next = refillSlots(columns, [resolvedId], incoming, createSeededRng(7))
 
@@ -417,17 +378,11 @@ describe('refillSlots', () => {
 			const changed = columns[form].filter((cell, index) => next[form][index]?.id !== cell.id)
 
 			expect(changed).toHaveLength(1)
-			// Y la única que cambia es la que estaba libre.
 			expect(changed[0]?.verbId).toBe(resolvedId)
 		}
 	})
 
-	/**
-	 * Regla anti-pista de `MECHANICS.md` §1: alineada en dos columnas, el jugador
-	 * sabría gratis que esas celdas son del mismo verbo.
-	 */
 	it('nunca alinea la tríada entrante en la misma fila de dos columnas', () => {
-		// Con varios huecos, que es el caso que crea la reposición diferida.
 		const vacated = [
 			(columns.present[0] as Cell).verbId,
 			(columns.present[2] as Cell).verbId,
@@ -458,7 +413,6 @@ describe('refillSlots', () => {
 		}
 	})
 
-	/** Sin pool no hay nada que colocar: las resueltas se quedan atenuadas. */
 	it('devuelve el tablero intacto si no hay verbo entrante', () => {
 		expect(refillSlots(columns, [resolvedId], null, createSeededRng(1))).toBe(columns)
 	})
@@ -476,18 +430,6 @@ describe('refillSlots', () => {
 	})
 })
 
-/**
- * La regla anti-pista tiene que aguantar una PARTIDA ENTERA, no una reposición
- * aislada, y ahí es donde estaba el problema: al reponer la última tríada de una
- * tanda queda un solo hueco por columna, y si las reposiciones anteriores
- * consumieron las filas equivocadas la colisión es inevitable.
- *
- * Dos medidas la reducen: el reparto ya no alinea ningún verbo, y la elección de
- * filas mira una reposición por delante. De un 44 % sin ninguna regla se baja a
- * ~1,6 %. **No es cero y el test no finge que lo sea:** quedan situaciones
- * genuinamente forzadas. El umbral existe para detectar una regresión, no para
- * declarar una garantía que no se cumple.
- */
 describe('refillSlots — a lo largo de una partida', () => {
 	it('ningún verbo del reparto inicial comparte fila entre columnas', () => {
 		for (let seed = 1; seed <= 100; seed++) {
@@ -503,12 +445,6 @@ describe('refillSlots — a lo largo de una partida', () => {
 		}
 	})
 
-	/**
-	 * Se simula como juega el motor de verdad: **no se repone hasta que hay
-	 * `refillMinVacancies` huecos**. Sin esa regla, con un solo hueco las tres
-	 * filas libres son las que dejó la tríada resuelta y la entrante cae siempre
-	 * ahí, que es el peor de los regalos.
-	 */
 	it('no repite la tríada entera ni alinea filas', () => {
 		const {boardSize, refillMinVacancies} = getLevelConfig('easy')
 		let refills = 0
@@ -533,7 +469,6 @@ describe('refillSlots — a lo largo de una partida', () => {
 
 				while (owed > 0 && vacated() >= refillMinVacancies && pool.length > 0) {
 					const incoming = pool[0] as Verb
-					// Casillas libres antes de reponer, para detectar si se repiten.
 					const freeBefore = VERB_FORMS.map((form) =>
 						columns[form].flatMap((cell, row) =>
 							resolved.includes(cell.verbId) ? [{row, verbId: cell.verbId}] : [],
@@ -554,7 +489,6 @@ describe('refillSlots — a lo largo de una partida', () => {
 
 					if (new Set(rows).size !== VERB_FORMS.length) aligned += 1
 
-					// ¿Las tres casillas usadas venían de la misma tríada resuelta?
 					const owners = rows.map(
 						(row, index) => freeBefore[index]?.find((slot) => slot.row === row)?.verbId,
 					)
@@ -564,11 +498,6 @@ describe('refillSlots — a lo largo de una partida', () => {
 			}
 		}
 
-		/*
-		 * Ambos son cero sobre unas dos mil reposiciones, medido. Se afirma el cero
-		 * exacto y no un umbral: si alguien baja `refillMinVacancies`, el regalo
-		 * vuelve y el test tiene que decirlo en vez de tragárselo.
-		 */
 		expect(refills).toBeGreaterThan(500)
 		expect(sameSlots).toBe(0)
 		expect(aligned).toBe(0)

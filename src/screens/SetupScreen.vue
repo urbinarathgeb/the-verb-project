@@ -6,14 +6,6 @@ import {LEVELS} from '@/data/levels'
 import {MODE_LABELS, MODE_RULES} from '@/data/modes'
 import {DIFFICULTIES, MENU_MODES, PRACTICE_MODE} from '@/types/game'
 
-/**
- * Selección de modo y nivel.
- *
- * Se separó de la portada porque una sola pantalla hacía seis trabajos y ninguno
- * cabía entero en un móvil (`PLAN.md`, Bitácora, D14). Con sitio propio, los
- * tres modos pueden mostrar su regla **a la vez**: elegir pasa a ser comparar en
- * lugar de adivinar.
- */
 const router = useRouter()
 
 const {mode, difficulty, setMode, setDifficulty, levelSummary, destination} = useGameSetup()
@@ -22,11 +14,6 @@ function play(): void {
 	router.push(destination.value)
 }
 
-/**
- * Salida explícita. Instalada como PWA no hay «atrás» del navegador: dejar una
- * pantalla sin salida propia es el defecto 4 de T8.1, que ya mordió una vez en
- * la pantalla de juego.
- */
 function goBack(): void {
 	router.push({name: 'home'})
 }
@@ -47,10 +34,6 @@ function goBack(): void {
 		</header>
 
 		<div class="setup-choices">
-			<!--
-				Los modos van apilados a ancho completo y con su regla visible, no como
-				pastillas: la diferencia entre ellos es la regla, no el nombre.
-			-->
 			<fieldset class="setup-group">
 				<legend class="setup-legend">Modo</legend>
 				<div class="setup-modes">
@@ -111,8 +94,6 @@ function goBack(): void {
 
 .setup-back {
 	flex: 0 0 auto;
-	/* Cuadrado, como las demás salidas del sistema: la flecha no necesita
-	   el relleno horizontal de un botón de texto. */
 	width: var(--spacing-touch);
 	padding: 0;
 	font-size: var(--text-headline-md);
@@ -160,7 +141,6 @@ function goBack(): void {
 	flex-direction: column;
 	align-items: flex-start;
 	gap: 2px;
-	/* El texto manda el alto: son dos líneas, no una etiqueta centrada. */
 	padding: calc(var(--spacing-gutter) / 3) calc(var(--spacing-gutter) / 2);
 	text-align: left;
 }
@@ -169,10 +149,6 @@ function goBack(): void {
 	font-size: var(--text-label-bold);
 }
 
-/*
- * La regla se lee en el cuerpo del texto y no en versales: es una frase, no una
- * etiqueta, y en versales con tracking competiría con el nombre del modo.
- */
 .setup-mode-rule {
 	font-family: var(--font-body);
 	font-size: var(--text-caption);

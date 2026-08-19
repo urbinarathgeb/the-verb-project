@@ -9,13 +9,6 @@ import {LEVELS, MIN_MATCHES_FOR_RANKING} from '@/data/levels'
 import {MODE_LABELS} from '@/data/modes'
 import {DIFFICULTIES, GAME_MODES, type Difficulty, type GameMode} from '@/types/game'
 
-/**
- * Clasificación por modo y nivel.
- *
- * Son seis tablas distintas (dos modos × tres niveles) y no una sola: comparar
- * un tiempo de nivel fácil con uno de difícil no significaría nada, porque el
- * tablero y el objetivo cambian (`MECHANICS.md` §5).
- */
 const router = useRouter()
 const {entries, isLoading, isEmpty, loadError, loadRanking} = useRanking()
 const {userId, isAuthenticated} = useAuth()
@@ -23,7 +16,6 @@ const {userId, isAuthenticated} = useAuth()
 const selectedMode = ref<GameMode>('target')
 const selectedDifficulty = ref<Difficulty>('easy')
 
-// Un único observador para las dos pestañas: cualquier cambio recarga.
 watch([selectedMode, selectedDifficulty], ([mode, difficulty]) => {
 	void loadRanking(mode, difficulty)
 })
@@ -73,10 +65,6 @@ function goHome(): void {
 			</fieldset>
 		</div>
 
-		<!--
-			`aria-live` para que quien no ve la pantalla se entere de que la tabla
-			cambió al pulsar una pestaña: sin esto, el cambio ocurre en silencio.
-		-->
 		<div class="ranking-body" aria-live="polite" :aria-busy="isLoading">
 			<p v-if="isLoading" class="ranking-state">Cargando…</p>
 
@@ -86,7 +74,6 @@ function goHome(): void {
 
 			<div v-else-if="isEmpty" class="ranking-state ranking-empty">
 				<p>Todavía no hay marcas en esta tabla.</p>
-				<!-- Estado vacío que explica cómo dejar de estarlo, en vez de sólo constatarlo. -->
 				<p class="ranking-empty-hint">
 					<template v-if="!isAuthenticated">
 						Entra con tu cuenta desde el menú y juega una partida: los resultados de invitado no se
@@ -172,7 +159,6 @@ function goHome(): void {
 	display: flex;
 	justify-content: center;
 	width: 100%;
-	/* Reserva para que cambiar de pestaña no haga saltar los botones de abajo. */
 	min-height: 12rem;
 }
 

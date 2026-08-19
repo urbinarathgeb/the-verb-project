@@ -5,22 +5,8 @@ import {usePracticeEngine} from '../usePracticeEngine'
 import {createSeededRng} from '@/lib/shuffle'
 import {useProgressStore} from '@/stores/progress'
 
-/**
- * Cuándo se envía el progreso acumulado. El *qué* se envía se prueba en
- * `stores/__tests__/progress-sync.spec.ts`; aquí sólo interesa el ritmo: agrupar
- * las respuestas seguidas y no perder las últimas al salir.
- */
-
 const SYNC_DELAY_MS = 2000
 
-/**
- * `document` mínimo, lo justo para el listener de visibilidad.
- *
- * Se prefiere a instalar jsdom porque el proyecto no testea componentes
- * (`vitest.config.ts`) y traer un DOM completo para escuchar un evento sería
- * desproporcionado. Además deja contar los listeners, que es como se comprueba
- * que se sueltan al salir.
- */
 function createFakeDocument() {
 	const listeners = new Map<string, Set<() => void>>()
 
@@ -58,11 +44,6 @@ afterEach(() => {
 	vi.restoreAllMocks()
 })
 
-/**
- * Motor dentro de un `effectScope` propio, para poder simular la salida de la
- * pantalla parándolo. Se espía `syncPending` en lugar de simular Supabase: lo
- * que se comprueba aquí es cuándo se llama, no qué hace.
- */
 function setup() {
 	const progress = useProgressStore()
 	const syncPending = vi.spyOn(progress, 'syncPending').mockResolvedValue('saved')
@@ -102,10 +83,6 @@ describe('envío agrupado', () => {
 		expect(syncPending).toHaveBeenCalledTimes(1)
 	})
 
-	/**
-	 * Lo que justifica el retardo: en una ráfaga de respuestas seguidas sale una
-	 * sola petición en vez de una por respuesta.
-	 */
 	it('agrupa una ráfaga de respuestas en un solo envío', () => {
 		const {engine, syncPending} = setup()
 
@@ -134,7 +111,6 @@ describe('envío agrupado', () => {
 })
 
 describe('envío al salir', () => {
-	/** Sin esto, las respuestas de los últimos segundos morirían con la pantalla. */
 	it('envía lo pendiente al desmontar la pantalla', () => {
 		const {engine, scope, syncPending} = setup()
 
@@ -151,15 +127,9 @@ describe('envío al salir', () => {
 		scope.stop()
 		vi.advanceTimersByTime(SYNC_DELAY_MS * 3)
 
-		// Un solo envío, el de la salida: el temporizador pendiente se canceló.
 		expect(syncPending).toHaveBeenCalledTimes(1)
 	})
 
-	/**
-	 * `visibilitychange` y no `beforeunload`: en móvil el navegador puede matar la
-	 * pestaña sin disparar nunca `beforeunload`, y las últimas respuestas se
-	 * perderían.
-	 */
 	it('envía al pasar la pestaña a segundo plano', () => {
 		const {engine, syncPending} = setup()
 
@@ -180,7 +150,6 @@ describe('envío al salir', () => {
 		expect(syncPending).not.toHaveBeenCalled()
 	})
 
-	/** El listener debe soltarse al salir, o seguiría vivo tras cerrar la pantalla. */
 	it('deja de escuchar la visibilidad tras salir', () => {
 		const {engine, scope, syncPending} = setup()
 

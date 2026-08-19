@@ -23,32 +23,18 @@ function advance(ms: number): void {
 
 type Store = ReturnType<typeof useGameStore>
 
-/** La celda de `verbId` en la columna `form`, tal como está ahora en el tablero. */
 function cellOf(store: Store, verbId: number, form: VerbForm): Cell {
 	const cell = store.columns[form].find((candidate) => candidate.verbId === verbId)
 	if (cell === undefined) throw new Error(`El verbo ${verbId} no está en la columna ${form}`)
 	return cell
 }
 
-/**
- * Ids de los verbos que quedan por emparejar.
- *
- * Desde la reposición diferida no basta con leer la columna: las celdas ya
- * acertadas se quedan en su sitio, atenuadas, hasta que las sustituyen.
- */
 function visibleVerbIds(store: Store): number[] {
 	return store.columns.present
 		.filter((cell) => !store.resolvedVerbIds.includes(cell.verbId))
 		.map((cell) => cell.verbId)
 }
 
-/**
- * Resuelve `count` tríadas como lo haría un jugador rápido: encadena mientras
- * haya tríadas jugables y sólo deja correr el reloj cuando el tablero se agota.
- *
- * Esperar entre cada acierto consumiría el límite de tiempo y las partidas de
- * Contrarreloj se perderían por reloj en vez de comprobar lo que interesa.
- */
 function solveMany(store: Store, count: number): void {
 	for (let index = 0; index < count; index++) {
 		let next = visibleVerbIds(store)[0]
@@ -64,15 +50,11 @@ function solveMany(store: Store, count: number): void {
 	}
 }
 
-/** Resuelve la tríada de `verbId` seleccionando sus tres celdas. */
 function solve(store: Store, verbId: number): void {
 	for (const form of VERB_FORMS) store.selectCell(cellOf(store, verbId, form))
 }
 
-/** Falla a propósito combinando celdas de dos verbos distintos. */
 function fail(store: Store): void {
-	// Hacen falta dos verbos jugables; si el tablero se vació, se espera a que
-	// entren reposiciones.
 	if (visibleVerbIds(store).length < 2) {
 		advance((store.level?.refillDelayMs ?? 0) + REFILL_APPEAR_MS)
 	}
@@ -108,10 +90,6 @@ describe('useGameStore — estado inicial', () => {
 		expect(store.result).toBeNull()
 	})
 
-	/**
-	 * La skill `vue-pinia-best-practices` exige devolver todo el estado propio del
-	 * setup store: si algo se queda fuera, desaparece de DevTools y de `$state`.
-	 */
 	it('expone su estado propio en `$state`', () => {
 		const store = useGameStore()
 
@@ -169,7 +147,6 @@ describe('useGameStore — arranque de partida', () => {
 		expect(store.remainingMs).toBe(getLevelConfig('easy').timeLimitMs)
 	})
 
-	/** En Supervivencia no hay límite: el cronómetro sube (`MECHANICS.md` §3). */
 	it('el Modo Supervivencia no tiene límite de tiempo', () => {
 		const store = useGameStore()
 
@@ -260,7 +237,6 @@ describe('useGameStore — jugadas', () => {
 		expect(outcome).toMatchObject({type: 'match', verbId})
 	})
 
-	/** La reposición es diferida: el hueco se ve durante `refillDelayMs`. */
 	it('el acierto deja un hueco en lugar de reponer al instante', () => {
 		const store = useGameStore()
 		const {boardSize} = getLevelConfig('easy')
@@ -274,12 +250,6 @@ describe('useGameStore — jugadas', () => {
 		expect(visibleVerbIds(store)).not.toContain(verbId)
 	})
 
-	/**
-	 * Con un solo hueco, las tres filas libres son exactamente las que dejó la
-	 * tríada resuelta: la entrante caería ahí y el jugador —que acaba de verlas
-	 * atenuarse juntas— sabría al instante que las tres nuevas son un verbo. Por
-	 * eso la reposición **queda en deuda** hasta que haya huecos suficientes.
-	 */
 	it('no repone mientras no haya huecos suficientes', () => {
 		const store = useGameStore()
 		const {boardSize, refillDelayMs} = getLevelConfig('easy')
@@ -292,12 +262,6 @@ describe('useGameStore — jugadas', () => {
 		expect(store.visibleCount).toBe(boardSize - 1)
 	})
 
-	/**
-	 * Pero el mínimo **caduca**, y es imprescindible que caduque: cada acierto
-	 * genera una reposición y el tablero deja de pagarlas al bajar del mínimo, así
-	 * que un mínimo de G huecos dejaría el tablero fijo en N−(G−1) durante el resto
-	 * de la partida, oscilando sin volver a llenarse nunca.
-	 */
 	it('acaba reponiendo aunque no se alcance el mínimo, pasado el margen', () => {
 		const store = useGameStore()
 		const {boardSize, refillDelayMs, refillGraceMs} = getLevelConfig('easy')
@@ -310,12 +274,6 @@ describe('useGameStore — jugadas', () => {
 		expect(store.visibleCount).toBe(boardSize)
 	})
 
-	/**
-	 * El caso que destapó el defecto: el tablero tiene que volver a llenarse.
-	 *
-	 * Se juega en Supervivencia porque Contrarreloj ganaría al alcanzar el objetivo y
-	 * cancelaría las reposiciones pendientes antes de poder comprobarlo.
-	 */
 	it('vuelve a su tamaño completo tras una racha larga', () => {
 		const store = useGameStore()
 		const {boardSize, refillDelayMs, refillGraceMs} = getLevelConfig('easy')
@@ -329,14 +287,12 @@ describe('useGameStore — jugadas', () => {
 			advance(refillDelayMs)
 		}
 
-		// Se deja reposar lo suficiente para que caduquen todas las deudas.
 		advance((refillGraceMs + REFILL_APPEAR_MS) * boardSize)
 
 		expect(store.vacatedCount).toBe(0)
 		expect(store.visibleCount).toBe(boardSize)
 	})
 
-	/** Encadenar aciertos vacía el tablero hasta llegar al mínimo de huecos. */
 	it('los aciertos encadenados vacían el tablero antes de reponerse', () => {
 		const store = useGameStore()
 		const {boardSize, refillMinVacancies} = getLevelConfig('easy')
@@ -349,16 +305,11 @@ describe('useGameStore — jugadas', () => {
 		expect(store.visibleCount).toBe(boardSize - (refillMinVacancies - 1))
 	})
 
-	/**
-	 * Con el tablero casi desierto se adelanta la reposición más antigua sin
-	 * esperar a su retardo, para que no se quede vacío durante una racha larga.
-	 */
 	it('adelanta la reposición cuando el tablero se vacía demasiado', () => {
 		const store = useGameStore()
 		const {boardSize, refillForceVacancies} = getLevelConfig('easy')
 		store.startGame('target', 'easy')
 
-		// Se acierta hasta el umbral SIN dejar vencer ningún retardo de reposición.
 		for (let index = 0; index < refillForceVacancies; index++) {
 			const next = visibleVerbIds(store)[0]
 			if (next === undefined) break
@@ -367,13 +318,10 @@ describe('useGameStore — jugadas', () => {
 
 		advance(REFILL_APPEAR_MS)
 
-		// Sin la regla, aquí quedarían `refillForceVacancies` huecos y ninguna
-		// reposición, porque el retardo no ha vencido para ninguna.
 		expect(store.vacatedCount).toBeLessThan(refillForceVacancies)
 		expect(store.visibleCount).toBeGreaterThan(boardSize - refillForceVacancies)
 	})
 
-	/** Una partida terminada no puede seguir repoblando el tablero por detrás. */
 	it('cancela las reposiciones pendientes al terminar', () => {
 		const store = useGameStore()
 		const {refillDelayMs} = getLevelConfig('easy')
@@ -398,7 +346,6 @@ describe('useGameStore — jugadas', () => {
 		expect(store.errorCellIds).toEqual([])
 	})
 
-	/** El tablero es inerte fuera de la partida: ni antes de arrancar ni después de terminar. */
 	it('ignora jugadas antes de arrancar', () => {
 		const store = useGameStore()
 		const cell: Cell = {id: '1:present', verbId: 1, form: 'present', text: 'be', meaning: 'ser'}
@@ -460,10 +407,6 @@ describe('useGameStore — fin de partida', () => {
 		expect(store.status).toBe('won')
 	})
 
-	/**
-	 * En Modo Objetivo, agotar el tiempo es la derrota (`MECHANICS.md` §2). Las
-	 * condiciones de victoria propias de cada modo llegan en T2.2 y T2.3.
-	 */
 	it('agotar la cuenta regresiva pierde la partida', () => {
 		const store = useGameStore()
 		store.startGame('target', 'easy')
@@ -499,7 +442,6 @@ describe('useGameStore — resultado', () => {
 			mode: 'target',
 			difficulty: 'medium',
 			status: 'won',
-			// El fallo penaliza tiempo y ese tiempo también cuenta para el ranking.
 			timeMs: 12 * SECOND + errorPenaltyMs,
 			errors: 1,
 			verbsMatched: 1,
@@ -516,7 +458,6 @@ describe('useGameStore — resultado', () => {
 		expect(new Date(completedAt).toISOString()).toBe(completedAt)
 	})
 
-	/** El tiempo se lee con el reloj ya detenido, así que es exacto al milisegundo. */
 	it('registra el tiempo exacto, no el del último tick', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -577,7 +518,6 @@ describe('useGameStore — reinicio', () => {
 		expect(store.visibleCount).toBe(getLevelConfig('hard').boardSize)
 	})
 
-	/** Un reloj expirado no vuelve a arrancar sin `reset`; `startGame` debe hacerlo. */
 	it('se puede volver a jugar tras perder por tiempo', () => {
 		const store = useGameStore()
 		store.startGame('target', 'easy')
@@ -625,7 +565,6 @@ describe('Modo Objetivo — penalización por error', () => {
 		expect(store.remainingMs).toBe(timeLimitMs - errorPenaltyMs)
 	})
 
-	/** El error consume tiempo pero no termina la ronda (`MECHANICS.md` §2). */
 	it('un fallo no termina la partida', () => {
 		const store = useGameStore()
 		store.startGame('target', 'easy')
@@ -636,10 +575,6 @@ describe('Modo Objetivo — penalización por error', () => {
 		expect(store.isPlaying).toBe(true)
 	})
 
-	/**
-	 * La penalización cuenta como tiempo consumido, así que también empeora el
-	 * tiempo que se registra en el ranking.
-	 */
 	it('la penalización empeora el tiempo registrado', () => {
 		const store = useGameStore()
 		const {errorPenaltyMs} = getLevelConfig('easy')
@@ -727,9 +662,6 @@ describe('Modo Objetivo — victoria', () => {
 
 		expect(store.isTimerRunning).toBe(false)
 
-		// Lo que importa no es el número exacto —depende de cuántas veces haya que
-		// esperar reposición— sino que el reloj quede congelado: dejar correr el
-		// tiempo después de ganar no puede cambiar el resultado registrado.
 		const registrado = store.result?.timeMs
 
 		expect(registrado).toBeGreaterThan(0)
@@ -764,7 +696,6 @@ describe('Modo Objetivo — victoria', () => {
 		expect(store.status).toBe('won')
 	})
 
-	/** En Supervivencia no hay objetivo: se juega hasta fallar (`MECHANICS.md` §3). */
 	it('el Modo Supervivencia no tiene objetivo ni gana por aciertos', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -779,7 +710,6 @@ describe('Modo Objetivo — victoria', () => {
 })
 
 describe('Modo Objetivo — candidatura al ranking', () => {
-	/** La métrica es el tiempo empleado en alcanzar el objetivo (`MECHANICS.md` §2). */
 	it('una victoria clasifica', () => {
 		const store = useGameStore()
 		store.startGame('target', 'easy')
@@ -816,7 +746,6 @@ describe('Modo Objetivo — candidatura al ranking', () => {
 })
 
 describe('Modo Supervivencia — muerte súbita', () => {
-	/** Un solo error termina la ronda inmediatamente (`MECHANICS.md` §3). */
 	it('el primer fallo termina la partida', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -850,11 +779,6 @@ describe('Modo Supervivencia — muerte súbita', () => {
 		expect(store.result?.verbsMatched).toBe(7)
 	})
 
-	/**
-	 * `MECHANICS.md` §3: toda partida registrada en este modo tiene, por
-	 * definición, cero errores. El fallo es el terminador de la ronda, no una
-	 * penalización acumulable, así que no se contabiliza.
-	 */
 	it('la partida se registra con cero errores', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -876,7 +800,6 @@ describe('Modo Supervivencia — muerte súbita', () => {
 		expect(store.selectCell(cell)).toEqual({type: 'ignored'})
 	})
 
-	/** En Objetivo el error sólo cuesta tiempo; la ronda sigue (`MECHANICS.md` §2). */
 	it('el Modo Objetivo no tiene muerte súbita', () => {
 		const store = useGameStore()
 		store.startGame('target', 'easy')
@@ -889,10 +812,6 @@ describe('Modo Supervivencia — muerte súbita', () => {
 })
 
 describe('Modo Supervivencia — victoria por tablero vacío', () => {
-	/**
-	 * No hay objetivo de aciertos: se juega hasta fallar o hasta agotar el pool del
-	 * nivel, que es la victoria.
-	 */
 	it('vaciar el tablero gana la partida', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -922,8 +841,6 @@ describe('Modo Supervivencia — ritmo y ranking', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
 
-		// Se resuelven sin esperar reposición para que el único tiempo transcurrido
-		// sea el que fija el test: 5 aciertos en 30 s son 10 verbos por minuto.
 		for (let index = 0; index < 5; index++) solve(store, visibleVerbIds(store)[0] ?? 0)
 		advance(30 * SECOND)
 
@@ -972,10 +889,6 @@ describe('Modo Supervivencia — ritmo y ranking', () => {
 		expect(store.isRankingEligible).toBe(false)
 	})
 
-	/**
-	 * El caso degenerado que motiva el piso: un ritmo altísimo por inestabilidad
-	 * del ratio, no por habilidad.
-	 */
 	it('1 acierto en 300 ms da un ritmo altísimo pero no clasifica', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -1006,7 +919,6 @@ describe('useGameStore — registro de fallos', () => {
 
 		expect(store.mistakes).toHaveLength(1)
 		expect(store.mistakes[0]?.chosen).toHaveLength(3)
-		// Se ordena por columna, no por orden de pulsación.
 		expect(store.mistakes[0]?.chosen.map((choice) => choice.form)).toEqual([
 			'present',
 			'past',
@@ -1023,7 +935,6 @@ describe('useGameStore — registro de fallos', () => {
 		const triads = store.mistakes[0]?.triads ?? []
 
 		expect(triads.length).toBeGreaterThan(0)
-		// Cada tríada trae las tres formas, que es lo que se enseña.
 		for (const verb of triads) {
 			expect(verb.present).not.toBe('')
 			expect(verb.past).not.toBe('')
@@ -1041,11 +952,6 @@ describe('useGameStore — registro de fallos', () => {
 		expect(store.mistakes).toHaveLength(2)
 	})
 
-	/**
-	 * En Supervivencia `errors` es siempre 0 por especificación (`MECHANICS.md` §3: el
-	 * fallo termina la ronda, no se acumula), pero el fallo ocurrió — y es el más
-	 * valioso de explicar. Por eso el registro es independiente del contador.
-	 */
 	it('registra el fallo de Supervivencia aunque el contador siga en cero', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -1068,13 +974,6 @@ describe('useGameStore — registro de fallos', () => {
 	})
 })
 
-/**
- * Pausa.
- *
- * Existe porque `useTimer` mide contra el reloj del sistema a propósito, para
- * que el tiempo del ranking no derive: el efecto colateral era que una
- * notificación o una llamada arruinaban la partida (`PLAN.md`, Bitácora, D13).
- */
 describe('useGameStore — pausa', () => {
 	it('detiene el reloj sin terminar la partida', () => {
 		const store = useGameStore()
@@ -1092,17 +991,12 @@ describe('useGameStore — pausa', () => {
 		expect(store.elapsedMs).toBe(frozen)
 	})
 
-	/**
-	 * Sin esto, el tiempo detenido seguiría contando en el ritmo: el jugador
-	 * volvería a una partida con un ritmo hundido por segundos que nadie jugó.
-	 */
 	it('el tiempo en pausa no cuenta para el resultado', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
 
 		solveMany(store, MIN_MATCHES_FOR_RANKING)
 
-		// Tiempo jugado de verdad, para tener con qué comparar.
 		advance(4 * SECOND)
 		const playedMs = store.elapsedMs
 
@@ -1112,11 +1006,6 @@ describe('useGameStore — pausa', () => {
 
 		fail(store)
 
-		/*
-		 * El margen cubre lo que `fail` deja correr esperando reposiciones, pero se
-		 * queda muy por debajo de los cinco minutos de pausa: sin la pausa, el
-		 * resultado rondaría los 309 s y este límite lo detectaría.
-		 */
 		expect(store.result?.timeMs).toBeLessThan(playedMs + 60 * SECOND)
 	})
 
@@ -1145,11 +1034,6 @@ describe('useGameStore — pausa', () => {
 		expect(store.elapsedMs).toBeGreaterThanOrEqual(2 * SECOND)
 	})
 
-	/**
-	 * La deuda de reposición se conserva: durante la pausa el drenaje vuelve
-	 * temprano, y `resume` lo vuelve a pedir. Sin eso el tablero se quedaría
-	 * encogido el resto de la partida.
-	 */
 	it('las reposiciones vencidas durante la pausa se pagan al reanudar', () => {
 		const store = useGameStore()
 		store.startGame('precision', 'easy')
@@ -1160,7 +1044,6 @@ describe('useGameStore — pausa', () => {
 		const vacatedBeforePause = store.vacatedCount
 		store.pause()
 
-		// Vence de sobra el retardo de todas las reposiciones agendadas.
 		advance(config.refillDelayMs + config.refillGraceMs + REFILL_APPEAR_MS)
 
 		expect(store.vacatedCount).toBe(vacatedBeforePause)

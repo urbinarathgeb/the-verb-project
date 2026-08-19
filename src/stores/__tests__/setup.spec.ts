@@ -39,11 +39,6 @@ describe('store de configuración de partida', () => {
 		expect(store.mode).toBe('practice')
 	})
 
-	/*
-	 * Los valores acaban formando parte de una URL, así que uno inexistente no
-	 * daría un error visible: dejaría al jugador ante un guard de ruta que lo
-	 * devuelve al inicio sin decir nada.
-	 */
 	it('ignora un modo que no existe y conserva el anterior', () => {
 		const store = useSetupStore()
 		store.setMode('precision')

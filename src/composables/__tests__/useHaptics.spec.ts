@@ -1,18 +1,10 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
 import {useHaptics} from '@/composables/useHaptics'
 
-/**
- * Vibración de las jugadas. Lo que se comprueba aquí son las **guardas**: que no
- * se llame a la API cuando el dispositivo no la tiene o cuando el usuario ha
- * pedido reducir movimiento. Vibrar a quien ha pedido lo contrario es peor que
- * no vibrar en absoluto.
- */
-
 afterEach(() => {
 	vi.unstubAllGlobals()
 })
 
-/** Deja el entorno con la vibración y la preferencia indicadas. */
 function stubEnvironment({
 	hasVibrate,
 	reducedMotion,
@@ -52,10 +44,6 @@ describe('disponibilidad', () => {
 		expect(vibrate).not.toHaveBeenCalled()
 	})
 
-	/**
-	 * La preferencia se relee en cada jugada: si se congelara al crear el
-	 * composable, activarla a mitad de partida no surtiría efecto hasta salir.
-	 */
 	it('deja de vibrar en cuanto cambia la preferencia', () => {
 		const vibrate = vi.fn()
 		let reduced = false
@@ -84,11 +72,6 @@ describe('patrones', () => {
 		expect(vibrate).toHaveBeenCalledWith(18)
 	})
 
-	/**
-	 * El fallo se distingue por el patrón y no por la duración: sin mirar la
-	 * pantalla, dos pulsos se leen como otra cosa y uno más largo como más de lo
-	 * mismo.
-	 */
 	it('el fallo son dos toques', () => {
 		const vibrate = stubEnvironment({hasVibrate: true, reducedMotion: false})
 
@@ -98,9 +81,6 @@ describe('patrones', () => {
 
 		expect(Array.isArray(pattern)).toBe(true)
 
-		// El array alterna vibración y pausa empezando por vibración, así que los
-		// pulsos son las posiciones pares. Filtrar «los valores mayores que cero»
-		// contaría también el silencio de en medio.
 		const pulses = (pattern as number[]).filter((_ms, index) => index % 2 === 0)
 
 		expect(pulses).toHaveLength(2)

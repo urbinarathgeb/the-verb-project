@@ -2,12 +2,6 @@ import {describe, expect, it} from 'vitest'
 import {summarize, toReviewRows, type VerbProgress} from '@/lib/progress'
 import type {Verb} from '@/types/verb'
 
-/**
- * Lectura del progreso del Dojo. El grueso está en el **orden**: la pantalla
- * existe para responder «qué se me da mal», así que ordenar por otra cosa la
- * dejaría sin propósito.
- */
-
 const CATALOG: readonly Verb[] = [
 	{id: 1, present: 'be', past: 'was / were', participle: 'been', meaning: 'ser', level: 'beginner'},
 	{id: 2, present: 'go', past: 'went', participle: 'gone', meaning: 'ir', level: 'beginner'},
@@ -33,7 +27,6 @@ describe('toReviewRows', () => {
 		expect(rows.map((row) => row.verb.id)).toEqual([2])
 	})
 
-	/** Un verbo con una entrada a cero no se ha practicado: contarlo mentiría. */
 	it('trata una entrada sin respuestas como no practicada', () => {
 		const rows = toReviewRows(CATALOG, {2: progress(2, 0, 0)})
 
@@ -42,9 +35,7 @@ describe('toReviewRows', () => {
 
 	it('pone lo no dominado por delante de lo dominado', () => {
 		const rows = toReviewRows(CATALOG, {
-			// Dominado: 4 aciertos y 100 %.
 			1: progress(1, 4, 0),
-			// Sin dominar pese a un porcentaje alto: le faltan aciertos.
 			2: progress(2, 1, 0),
 		})
 
@@ -62,10 +53,6 @@ describe('toReviewRows', () => {
 		expect(rows.map((row) => row.verb.id)).toEqual([3, 1, 2])
 	})
 
-	/**
-	 * Sin desempate estable la lista bailaría entre dos visitas con los mismos
-	 * datos, y el jugador no sabría si ha cambiado algo.
-	 */
 	it('desempata por el presente del verbo', () => {
 		const rows = toReviewRows(CATALOG, {
 			3: progress(3, 1, 1),
@@ -112,7 +99,6 @@ describe('summarize', () => {
 		})
 	})
 
-	/** El catálogo puede encoger en pruebas; lo que falta nunca es negativo. */
 	it('nunca informa de un resto negativo', () => {
 		const rows = toReviewRows(CATALOG, {1: progress(1, 4, 0), 2: progress(2, 1, 2)})
 

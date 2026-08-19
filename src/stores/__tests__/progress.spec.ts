@@ -7,7 +7,6 @@ beforeEach(() => {
 	setActivePinia(createPinia())
 })
 
-/** Responde `times` veces sobre el mismo verbo con el resultado indicado. */
 function answerMany(
 	store: ReturnType<typeof useProgressStore>,
 	verbId: number,
@@ -31,11 +30,6 @@ describe('accuracyOf', () => {
 })
 
 describe('isMastered', () => {
-	/**
-	 * Hacen falta las dos condiciones: con tres opciones se acierta al azar una de
-	 * cada tres veces, así que sólo el porcentaje sería frágil, y sólo el número de
-	 * aciertos premiaría insistir hasta acertar.
-	 */
 	it('exige aciertos suficientes y buen porcentaje', () => {
 		expect(isMastered({verbId: 1, correct: 4, wrong: 0, lastPracticedAt: ''})).toBe(true)
 	})
@@ -78,11 +72,6 @@ describe('useProgressStore — estado inicial', () => {
 		})
 	})
 
-	/**
-	 * La skill de Pinia exige devolver **todo** el estado propio de un setup
-	 * store: lo que no se devuelve no aparece en DevTools ni lo ven los plugins.
-	 * Esta lista debe crecer con cada `ref` nuevo, y por eso se compara exacta.
-	 */
 	it('expone su estado en `$state`', () => {
 		expect(Object.keys(useProgressStore().$state)).toEqual([
 			'entries',
@@ -170,7 +159,6 @@ describe('useProgressStore — dominio', () => {
 		expect(store.masteredCount).toBe(0)
 	})
 
-	/** Un verbo puede dejar de estar dominado si se vuelve a fallar mucho. */
 	it('deja de estar dominado si el porcentaje baja del umbral', () => {
 		const store = useProgressStore()
 		answerMany(store, 7, Array<boolean>(MASTERY_MIN_CORRECT).fill(true))

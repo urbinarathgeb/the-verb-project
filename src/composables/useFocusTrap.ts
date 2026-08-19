@@ -1,19 +1,5 @@
 import {onBeforeUnmount, watch, type Ref} from 'vue'
 
-/**
- * Atrapa el foco dentro de un contenedor mientras está activo, y lo devuelve a
- * donde estaba al desactivarse.
- *
- * Sin esto, un lector de pantalla o el tabulador se salen del modal y recorren
- * el tablero de fondo, que visualmente está tapado: el usuario queda navegando a
- * ciegas por controles que no puede ver (`CLAUDE.md` §11).
- *
- * No se usa el `<dialog>` nativo —que traería el atrapado de foco gratis— porque
- * los modales del juego no se abren imperativamente con `showModal()`, sino de
- * forma declarativa según el estado de la partida.
- */
-
-/** Elementos que pueden recibir foco dentro del contenedor. */
 const FOCUSABLE_SELECTOR = [
 	'button:not([disabled])',
 	'[href]',
@@ -24,16 +10,7 @@ const FOCUSABLE_SELECTOR = [
 ].join(', ')
 
 export interface UseFocusTrapOptions {
-	/** Se invoca al pulsar `Esc`. Si se omite, `Esc` no hace nada. */
 	onEscape?: () => void
-	/**
-	 * Enfoca el contenedor en lugar del primer control al abrirse.
-	 *
-	 * Es lo indicado cuando el diálogo es sobre todo texto: enfocar el primer
-	 * control arrastra el scroll hasta él, y con contenido largo el modal se abre
-	 * con el título fuera de pantalla. Enfocar el contenedor deja el contenido
-	 * desde el principio y el lector de pantalla lo anuncia igual.
-	 */
 	focusContainer?: boolean
 }
 
@@ -44,7 +21,6 @@ export function useFocusTrap(
 ): void {
 	const {onEscape, focusContainer = false} = options
 
-	/** Elemento que tenía el foco antes de abrirse el modal. */
 	let previouslyFocused: HTMLElement | null = null
 
 	function focusableElements(): HTMLElement[] {
@@ -67,7 +43,6 @@ export function useFocusTrap(
 
 		const elements = focusableElements()
 		if (elements.length === 0) {
-			// Un modal sin controles no debe dejar escapar el foco al fondo.
 			event.preventDefault()
 			return
 		}
@@ -76,8 +51,6 @@ export function useFocusTrap(
 		const last = elements[elements.length - 1]
 		if (first === undefined || last === undefined) return
 
-		// El ciclo se cierra a mano en los extremos; en medio, el navegador ya
-		// hace lo correcto.
 		if (event.shiftKey && document.activeElement === first) {
 			event.preventDefault()
 			last.focus()
@@ -93,12 +66,8 @@ export function useFocusTrap(
 
 		document.addEventListener('keydown', handleKeydown)
 
-		// El contenido del modal se monta en el mismo tick, así que el foco se
-		// mueve en el siguiente para encontrar ya los controles en el DOM.
 		requestAnimationFrame(() => {
 			const [first] = focusableElements()
-			// Si el modal no tiene controles (la cuenta atrás, por ejemplo), se
-			// enfoca el propio panel para que el lector anuncie su contenido.
 			const target = focusContainer ? container.value : (first ?? container.value)
 
 			target?.focus()

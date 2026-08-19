@@ -27,8 +27,6 @@ function cellOf(engine: Engine, verbId: number, form: VerbForm): Cell {
 }
 
 function visibleVerbIds(engine: Engine): number[] {
-	// Se filtran las resueltas: desde la reposición diferida siguen en el tablero,
-	// atenuadas, hasta que una reposición las sustituye.
 	return engine.columns.value.present
 		.filter((cell) => !engine.resolvedVerbIds.value.includes(cell.verbId))
 		.map((cell) => cell.verbId)
@@ -46,11 +44,6 @@ function fail(engine: Engine): void {
 }
 
 describe('useGameEngine — contrato de reactividad', () => {
-	/**
-	 * Desestructurar un store de Pinia sin `storeToRefs` congela los valores en el
-	 * momento de la desestructuración: la UI dejaría de actualizarse en silencio.
-	 * Este test fija que el estado sale como refs.
-	 */
 	it('expone el estado como refs, no como valores sueltos', () => {
 		const engine = useGameEngine()
 		const stateKeys = [
@@ -93,7 +86,6 @@ describe('useGameEngine — contrato de reactividad', () => {
 		expect(engine.remainingMs.value).toBe(getLevelConfig('easy').timeLimitMs - 5 * SECOND)
 	})
 
-	/** Dos consumidores ven la misma partida: es el motivo de que el estado esté en Pinia. */
 	it('dos instancias comparten la misma partida', () => {
 		const first = useGameEngine()
 		const second = useGameEngine()
@@ -198,9 +190,6 @@ describe('useGameEngine — partida completa', () => {
 		engine.startGame('target', 'easy')
 		vi.advanceTimersByTime(20 * SECOND)
 
-		// Se juega como un jugador rápido: se encadena mientras haya tríadas y sólo
-		// se espera reposición cuando el tablero se agota. Esperar entre cada acierto
-		// consumiría el límite de tiempo y la partida se perdería por reloj.
 		for (let done = 0; done < targetVerbs; done++) {
 			if (visibleVerbIds(engine).length === 0) {
 				vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs + REFILL_APPEAR_MS)
@@ -223,7 +212,6 @@ describe('useGameEngine — partida completa', () => {
 			solve(engine, visibleVerbIds(engine)[0] ?? 0)
 			vi.advanceTimersByTime(getLevelConfig('easy').refillDelayMs)
 		}
-		// Seis aciertos con seis reposiciones de 5 s: 30 s ya transcurridos.
 		expect(engine.elapsedMs.value).toBe(30 * SECOND)
 
 		fail(engine)

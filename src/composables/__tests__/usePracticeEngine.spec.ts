@@ -9,7 +9,6 @@ beforeEach(() => {
 	setActivePinia(createPinia())
 })
 
-/** Motor con semilla fija y sesión ya empezada. */
 function engineStarted(seed = 1) {
 	const engine = usePracticeEngine({rng: createSeededRng(seed)})
 	engine.start('easy')
@@ -18,12 +17,10 @@ function engineStarted(seed = 1) {
 
 type Engine = ReturnType<typeof usePracticeEngine>
 
-/** Responde correctamente la pregunta actual. */
 function answerCorrectly(engine: Engine): void {
 	engine.answer(engine.question.value?.correctAnswer ?? '')
 }
 
-/** Responde con un distractor. */
 function answerWrong(engine: Engine): void {
 	const question = engine.question.value
 	const wrong = question?.options.find((option) => option !== question.correctAnswer) ?? ''
@@ -107,7 +104,6 @@ describe('usePracticeEngine — responder', () => {
 		expect(engine.selectedAnswer.value).toBe(chosen)
 	})
 
-	/** Responder dos veces la misma pregunta falsearía la racha y el progreso. */
 	it('ignora una segunda respuesta a la misma pregunta', () => {
 		const engine = engineStarted()
 		answerCorrectly(engine)
@@ -137,7 +133,6 @@ describe('usePracticeEngine — racha', () => {
 		expect(engine.streak.value).toBe(3)
 	})
 
-	/** El reinicio total es lo que hace de la racha un refuerzo (`MECHANICS.md` §4). */
 	it('un fallo la deja a cero', () => {
 		const engine = engineStarted()
 		answerCorrectly(engine)
@@ -176,10 +171,6 @@ describe('usePracticeEngine — avanzar', () => {
 		expect(engine.isLastAnswerCorrect.value).toBeNull()
 	})
 
-	/**
-	 * Saltar preguntas sin contestar dejaría escapar justo los verbos que el
-	 * jugador no sabe, que son los que debe practicar.
-	 */
 	it('no avanza si aún no se ha respondido', () => {
 		const engine = engineStarted()
 		const first = engine.question.value
@@ -189,13 +180,6 @@ describe('usePracticeEngine — avanzar', () => {
 		expect(engine.question.value).toBe(first)
 	})
 
-	/**
-	 * Con 49 verbos en el pool, unas pocas iteraciones no prueban nada: el azar
-	 * casi nunca repite por sí solo. Sobre 200 preguntas, en cambio, sin excluir el
-	 * verbo anterior cabría esperar unas cuatro repeticiones, así que exigir cero
-	 * sí detecta que la exclusión falta. La semilla es fija, de modo que el test es
-	 * reproducible y no depende de la suerte de cada ejecución.
-	 */
 	it('no repite el verbo de la pregunta anterior', () => {
 		const engine = engineStarted()
 		const repeats: number[] = []
@@ -233,7 +217,6 @@ describe('usePracticeEngine — progreso', () => {
 		expect(store.progressFor(verbId).wrong).toBe(1)
 	})
 
-	/** El progreso es global: sobrevive al final de la sesión de práctica. */
 	it('el progreso sobrevive a un `start` nuevo', () => {
 		const engine = engineStarted()
 		const store = useProgressStore()

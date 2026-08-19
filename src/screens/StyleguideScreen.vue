@@ -1,13 +1,4 @@
 <script setup lang="ts">
-/**
- * Guía visual del sistema de diseño. Sólo se registra en la ruta cuando
- * `import.meta.env.DEV` es true, así que no entra en el bundle de producción.
- *
- * Sirve para validar los tokens de T0.5 sin depender de pantallas reales, y
- * como banco de pruebas de los componentes de la Fase 3: aquí se ven sus estados
- * antes de que exista una pantalla de juego (T3.2).
- */
-
 import {ref} from 'vue'
 import GameBoard from '@/components/GameBoard.vue'
 import GameModal from '@/components/GameModal.vue'
@@ -44,7 +35,6 @@ const shadows = [
 	'shadow-brutal-lg',
 ] as const
 
-/** Los 4 estados de celda del tablero, tal como los define PLAN.md. */
 const cellStates = [
 	{
 		name: 'Neutra',
@@ -68,20 +58,11 @@ const cellStates = [
 	},
 ] as const
 
-/** Columna de sample: verifica que el tablero funciona sin posición absoluta. */
 const sampleColumn = ['Go', 'Eat', 'Write', 'See', 'Take'] as const
 const tilts = ['paper-tilt-1', 'paper-tilt-2', 'paper-tilt-3', 'paper-tilt-4'] as const
 
-/* ---------------------------------------------------------------------------
- * Componentes de T3.1
- *
- * Se montan con datos fijos (semilla fija, sin store) para poder mirarlos sin
- * jugar una partida. La lógica real los conecta en T3.2.
- * ------------------------------------------------------------------------- */
-
 const demoBoard = createBoard(getVerbsForDifficulty('easy'), 6, createSeededRng(7))
 
-/** Simula los cuatro estados sobre celdas concretas del tablero de muestra. */
 const demoSelection = ref<string | null>(null)
 const demoErrorIds = demoBoard.columns.past.slice(0, 1).map((cell) => cell.id)
 const demoResolvedId = demoBoard.columns.present[2]?.verbId ?? -1
@@ -114,7 +95,6 @@ const isModalOpen = ref(false)
 				<p class="mt-1 text-caption">Guía visual — sólo disponible en desarrollo</p>
 			</header>
 
-			<!-- Paleta -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Paleta</h2>
 				<ul class="grid grid-cols-2 gap-gutter sm:grid-cols-4">
@@ -128,7 +108,6 @@ const isModalOpen = ref(false)
 				</ul>
 			</section>
 
-			<!-- Tipografía -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Tipografía</h2>
 				<div class="brutal-card flex flex-col gap-4 p-6">
@@ -143,7 +122,6 @@ const isModalOpen = ref(false)
 				</div>
 			</section>
 
-			<!-- Sombras -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Sombras duras</h2>
 				<div class="flex flex-wrap gap-8">
@@ -157,7 +135,6 @@ const isModalOpen = ref(false)
 				</div>
 			</section>
 
-			<!-- Estados de celda -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Estados de celda</h2>
 				<div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
@@ -175,7 +152,6 @@ const isModalOpen = ref(false)
 				</div>
 			</section>
 
-			<!-- Botones -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Botones</h2>
 				<div class="flex flex-wrap gap-6">
@@ -204,7 +180,6 @@ const isModalOpen = ref(false)
 				</p>
 			</section>
 
-			<!-- Columna de tablero -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">Columna de tablero</h2>
 				<p class="text-caption">
@@ -229,7 +204,6 @@ const isModalOpen = ref(false)
 				</div>
 			</section>
 
-			<!-- Componentes de T3.1 -->
 			<section class="flex flex-col gap-gutter">
 				<h2 class="text-headline-md font-display">HudBar</h2>
 				<p class="text-caption">

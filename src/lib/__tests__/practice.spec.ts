@@ -27,7 +27,6 @@ function makeVerbs(count: number): Verb[] {
 	return Array.from({length: count}, (_, index) => makeVerb(index + 1))
 }
 
-/** Una pregunta con semilla fija, para los casos que no dependen del azar. */
 function question(seed = 1, verbs = makeVerbs(20)) {
 	const result = createQuestion(verbs, createSeededRng(seed))
 	if (result === null) throw new Error('No se pudo construir la pregunta')
@@ -61,7 +60,6 @@ describe('createQuestion — forma de la pregunta', () => {
 		expect(q.correctAnswer).toBe(subject?.[q.requestedForm])
 	})
 
-	/** Preguntar por la forma que ya está a la vista sería trivial. */
 	it('nunca pide la forma que ya muestra el enunciado', () => {
 		for (let seed = 0; seed < 200; seed++) {
 			const q = question(seed)
@@ -71,11 +69,6 @@ describe('createQuestion — forma de la pregunta', () => {
 })
 
 describe('createQuestion — distractores', () => {
-	/**
-	 * Ésta es la invariante crítica del modo: dos opciones con el mismo texto
-	 * harían la pregunta irresoluble, porque el jugador podría elegir la
-	 * "correcta" y ser marcado como error.
-	 */
 	it('nunca repite una alternativa', () => {
 		for (let seed = 0; seed < 200; seed++) {
 			const q = question(seed)
@@ -91,10 +84,6 @@ describe('createQuestion — distractores', () => {
 		}
 	})
 
-	/**
-	 * Los distractores salen de la misma forma en otros verbos. Si vinieran de
-	 * otra forma, el jugador acertaría por descarte sin saber el verbo.
-	 */
 	it('los distractores son de la misma forma que la pedida', () => {
 		const verbs = makeVerbs(20)
 
@@ -113,18 +102,12 @@ describe('createQuestion — distractores', () => {
 		const subject = verbs.find((verb) => verb.id === q.verbId)
 		const otherForms = VERB_FORMS.filter((form) => form !== q.requestedForm)
 
-		// Ninguna alternativa debe ser otra forma del propio verbo preguntado.
 		const ownOtherForms = otherForms.map((form) => subject?.[form])
 		expect(q.options.some((option) => ownOtherForms.includes(option))).toBe(false)
 	})
 })
 
 describe('createQuestion — variedad', () => {
-	/**
-	 * Cualquiera de las tres formas puede aparecer en el enunciado y cualquiera de
-	 * las otras dos como pregunta. Practicar sólo desde el presente dejaría sin
-	 * ejercitar los saltos que más cuestan, como participio → pasado.
-	 */
 	it('las seis combinaciones de formas aparecen a lo largo de muchas preguntas', () => {
 		const pairs = new Set(
 			Array.from({length: 400}, (_, seed) => {
@@ -159,7 +142,6 @@ describe('createQuestion — variedad', () => {
 		expect(question(42)).toEqual(question(42))
 	})
 
-	/** Evita que dos preguntas seguidas sean idénticas, que se percibe como fallo. */
 	it('no repite el verbo excluido', () => {
 		const verbs = makeVerbs(20)
 
@@ -170,7 +152,6 @@ describe('createQuestion — variedad', () => {
 		}
 	})
 
-	/** Con el pool en el mínimo no hay alternativa: repetir es mejor que no preguntar. */
 	it('ignora la exclusión si el pool no da para otra cosa', () => {
 		const verbs = makeVerbs(3)
 		const q = createQuestion(verbs, createSeededRng(1), verbs[0]?.id)
@@ -194,11 +175,6 @@ describe('createQuestion — casos límite', () => {
 		expect(q?.options).toHaveLength(OPTIONS_PER_QUESTION)
 	})
 
-	/**
-	 * Si todos los verbos compartieran la forma pedida, no habría distractores
-	 * válidos. No pasa con el catálogo real, pero el motor no debe inventarse una
-	 * pregunta con opciones repetidas.
-	 */
 	it('devuelve null si no existen distractores distintos', () => {
 		const clones: Verb[] = [1, 2, 3, 4].map((id) => ({
 			id,
@@ -214,10 +190,6 @@ describe('createQuestion — casos límite', () => {
 })
 
 describe('createQuestion — significado', () => {
-	/**
-	 * El significado es del verbo, no de la forma mostrada: sirve igual cuando el
-	 * enunciado enseña un participio y pregunta por el pasado.
-	 */
 	it('lleva el significado del verbo preguntado', () => {
 		const verbs = makeVerbs(20)
 		const q = createQuestion(verbs, createSeededRng(3))
@@ -269,7 +241,6 @@ describe('nextStreak', () => {
 		expect(nextStreak(0, true)).toBe(1)
 	})
 
-	/** El reinicio total es lo que hace de la racha un refuerzo (`MECHANICS.md` §4). */
 	it('un error la deja a cero, no la decrementa', () => {
 		expect(nextStreak(9, false)).toBe(0)
 	})
@@ -295,21 +266,12 @@ describe('formatPrompt', () => {
 		)
 	})
 
-	/**
-	 * Se anuncia por voz, así que no puede llevar símbolos: la flecha que usaba
-	 * antes se escuchaba como «flecha derecha» en mitad del enunciado.
-	 */
 	it('no usa símbolos que un lector de pantalla tendría que deletrear', () => {
 		for (let seed = 0; seed < 20; seed++) {
 			expect(formatPrompt(question(seed))).not.toMatch(/[→>|/]/)
 		}
 	})
 
-	/**
-	 * Etiquetar la forma mostrada no es adorno: `read` se escribe igual en presente
-	 * y en pasado, y `cut` en las tres. Sin la etiqueta, el jugador no sabría desde
-	 * dónde se le pregunta y la pregunta sería irresoluble.
-	 */
 	it('indica siempre de qué forma parte el enunciado', () => {
 		for (let seed = 0; seed < 20; seed++) {
 			const q = question(seed)

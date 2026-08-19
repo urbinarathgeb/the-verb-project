@@ -1,16 +1,3 @@
-/**
- * Cargador tipado del catálogo de verbos.
- *
- * TypeScript ensancha los literales de un JSON importado, así que `level` llega
- * como `string` y el JSON no es asignable a `Verb[]` directamente. En vez de
- * silenciarlo con una aserción `as` —que anularía precisamente la comprobación
- * que queremos— se valida en runtime y se estrecha el tipo con guardas.
- *
- * El coste es despreciable (106 filas, una sola vez al importar el módulo) y a
- * cambio un catálogo mal editado falla de inmediato y con un mensaje claro, en
- * lugar de romper el tablero a mitad de una partida.
- */
-
 import rawVerbs from './verbs.json'
 import {VERB_FORMS, VERB_LEVELS, type Verb, type VerbLevel} from '@/types/verb'
 import type {Difficulty} from '@/types/game'
@@ -42,12 +29,6 @@ function parseVerb(raw: RawVerb): Verb {
 		}
 	}
 
-	/*
-	 * Se comprueba el tipo y no sólo el vacío: `rawVerbs as RawVerb[]` es una
-	 * aserción, así que una entrada del JSON a la que le falte el campo compila
-	 * igual. Sin esta guarda, el fallo saldría más tarde y como un `TypeError`
-	 * opaco en vez del mensaje que dice qué verbo está mal.
-	 */
 	if (typeof raw.meaning !== 'string' || raw.meaning.trim() === '') {
 		throw new Error(`Verbo ${raw.id}: el significado está vacío.`)
 	}
@@ -62,14 +43,8 @@ function parseVerb(raw: RawVerb): Verb {
 	}
 }
 
-/** Catálogo completo, validado y tipado. */
 export const VERBS: readonly Verb[] = Object.freeze((rawVerbs as RawVerb[]).map(parseVerb))
 
-/**
- * Verbos disponibles para un nivel de dificultad, según el pool definido en
- * `levels.ts`. Es el conjunto del que se toman las tríadas del tablero y su
- * reposición (`PLAN.md`, Bitácora, P1).
- */
 export function getVerbsForDifficulty(difficulty: Difficulty): Verb[] {
 	const {verbLevels} = getLevelConfig(difficulty)
 	return VERBS.filter((verb) => verbLevels.includes(verb.level))

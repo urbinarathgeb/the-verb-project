@@ -2,14 +2,6 @@
 import type {Mistake} from '@/lib/mistakes'
 import {FORM_LABELS} from '@/lib/practice'
 
-/**
- * Un fallo del tablero: lo que se eligió y las formas correctas de los verbos
- * implicados.
- *
- * Vive como componente y no como marcado repetido porque aparece en dos sitios
- * de la pantalla de resultado —el repaso visible y el modal con la lista
- * completa— y ambos deben leerse igual.
- */
 defineProps<{mistake: Mistake}>()
 </script>
 
@@ -23,22 +15,11 @@ defineProps<{mistake: Mistake}>()
 			</span>
 		</p>
 
-		<!--
-			Se muestran las tríadas de TODOS los verbos que tocó, no una sola: al
-			fallar se eligen celdas de hasta tres verbos distintos, así que no existe
-			«la» correcta. Ver las tres revela dónde estaba la confusión.
-		-->
 		<p class="mistake-label">
 			{{ mistake.triads.length === 1 ? 'Sus formas son' : 'Sus formas correctas son' }}
 		</p>
 		<p v-for="verb in mistake.triads" :key="verb.id" class="mistake-triad">
 			{{ verb.present }} · {{ verb.past }} · {{ verb.participle }}
-			<!--
-				En línea propia y no como un cuarto elemento tras otro `·`: la tríada se
-				lee como «tres formas», y meter el significado en esa serie rompería esa
-				gramática visual. Aquí sí acompaña a las tres formas sin problema, porque
-				la partida ya terminó y no hay mecánica que proteger.
-			-->
 			<span class="mistake-meaning">{{ verb.meaning }}</span>
 		</p>
 	</div>
@@ -67,7 +48,6 @@ defineProps<{mistake: Mistake}>()
 .mistake-choice {
 	padding: 2px 6px;
 	border: 3px solid var(--color-ink);
-	/* Rosa: el mismo color con el que se marca el fallo en el tablero. */
 	background-color: var(--color-pink);
 	font-size: var(--text-caption);
 }

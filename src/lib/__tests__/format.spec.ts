@@ -21,10 +21,6 @@ describe('formatDuration', () => {
 		expect(formatDuration(90 * SECOND)).toBe('1:30')
 	})
 
-	/**
-	 * Redondear hacia abajo mostraría `0:00` con 900 ms aún jugables, que es
-	 * desconcertante en una cuenta regresiva.
-	 */
 	it('redondea hacia arriba: quedan milisegundos, aún no es 0:00', () => {
 		expect(formatDuration(1)).toBe('0:01')
 		expect(formatDuration(900)).toBe('0:01')
@@ -48,7 +44,6 @@ describe('formatDurationPrecise', () => {
 		expect(formatDurationPrecise(0)).toBe('0:00.0')
 	})
 
-	/** Aquí sí se trunca: la décima debe bajar de 9 a 0 al cruzar el segundo. */
 	it('trunca en vez de redondear, para que la cuenta baje de forma continua', () => {
 		expect(formatDurationPrecise(1999)).toBe('0:01.9')
 	})

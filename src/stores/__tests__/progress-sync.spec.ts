@@ -1,11 +1,5 @@
 import {afterEach, describe, expect, it, vi} from 'vitest'
 
-/**
- * Sincronización del progreso contra Supabase. Va en un archivo aparte de
- * `progress.spec.ts` porque necesita simular el módulo del cliente, y eso obliga
- * a reiniciar el registro de módulos en cada caso.
- */
-
 afterEach(() => {
 	vi.resetModules()
 })
@@ -14,7 +8,6 @@ interface FakeOptions {
 	rpcError?: {message: string} | null
 	rows?: {verb_id: number; hits: number; misses: number; last_practiced_at: string}[]
 	selectError?: {message: string} | null
-	/** Deja la llamada en el aire hasta que se resuelva a mano. */
 	holdRpc?: boolean
 }
 
@@ -23,15 +16,6 @@ function createFakeClient(options: FakeOptions = {}) {
 	let releaseRpc: (() => void) | null = null
 	let announceRpc: (() => void) | null = null
 
-	/**
-	 * Se resuelve cuando la petición ha salido de verdad.
-	 *
-	 * Los casos de «se responde mientras está en vuelo» tienen que esperarla en
-	 * lugar de dar por hecho que `syncPending()` vacía la cola en el mismo tick:
-	 * el cliente se resuelve de forma asíncrona porque el SDK se carga bajo
-	 * demanda. Esperar al hecho, y no a un número de microtareas, deja el test a
-	 * salvo de cómo esté escrito el store por dentro.
-	 */
 	const rpcCalled = new Promise<void>((resolve) => {
 		announceRpc = resolve
 	})
@@ -68,8 +52,6 @@ async function loadStore(
 ) {
 	vi.resetModules()
 	vi.doMock('@/lib/supabase', () => ({
-		// El SDK se carga bajo demanda, así que el módulo expone una función que
-		// resuelve al cliente en lugar de la instancia ya creada.
 		getSupabase: () => Promise.resolve(client),
 		isSupabaseConfigured: client !== null,
 	}))
@@ -108,11 +90,6 @@ describe('acumulación de incrementos', () => {
 })
 
 describe('enviar los incrementos', () => {
-	/**
-	 * Se envían INCREMENTOS y no totales. Mandar totales calculados desde la copia
-	 * local haría que practicar en dos dispositivos sin recargar borrara lo
-	 * aprendido en el otro.
-	 */
 	it('manda a la función los incrementos, no los totales', async () => {
 		const fake = createFakeClient()
 		const store = await loadStore(fake.client, 'uuid-1')
@@ -154,7 +131,6 @@ describe('enviar los incrementos', () => {
 		expect(fake.rpcCalls).toEqual([])
 	})
 
-	/** Sin sesión no hay a quién atribuir el progreso, y eso no es un error. */
 	it('no envía nada como invitado', async () => {
 		const fake = createFakeClient()
 		const store = await loadStore(fake.client, null)
@@ -163,7 +139,6 @@ describe('enviar los incrementos', () => {
 
 		expect(await store.syncPending()).toBe('guest')
 		expect(fake.rpcCalls).toEqual([])
-		// La cola se conserva: si el jugador entra luego, no se ha perdido nada.
 		expect(store.hasPendingChanges).toBe(true)
 	})
 
@@ -175,7 +150,6 @@ describe('enviar los incrementos', () => {
 		expect(await store.syncPending()).toBe('offline')
 	})
 
-	/** Un fallo de red no puede tragarse las respuestas del jugador. */
 	it('devuelve los incrementos a la cola si el envío falla', async () => {
 		const fake = createFakeClient({rpcError: {message: 'sin red'}})
 		const store = await loadStore(fake.client, 'uuid-1')
@@ -188,11 +162,6 @@ describe('enviar los incrementos', () => {
 		expect(store.syncError).not.toBeNull()
 	})
 
-	/**
-	 * El caso delicado: se responde mientras la petición está en vuelo. La cola se
-	 * vacía ANTES de enviar, así que lo nuevo entra en una cola limpia; si el
-	 * envío falla, lo viejo debe **sumarse** a lo nuevo en lugar de pisarlo.
-	 */
 	it('suma lo respondido durante el envío en lugar de perderlo', async () => {
 		const fake = createFakeClient({holdRpc: true, rpcError: {message: 'sin red'}})
 		const store = await loadStore(fake.client, 'uuid-1')
@@ -202,7 +171,6 @@ describe('enviar los incrementos', () => {
 		const inFlight = store.syncPending()
 		await fake.rpcCalled
 
-		// Llega una respuesta más mientras la petición sigue abierta.
 		store.recordAnswer(7, true)
 		store.recordAnswer(8, false)
 
@@ -226,7 +194,6 @@ describe('enviar los incrementos', () => {
 		fake.releaseRpc()
 		await inFlight
 
-		// Sólo queda lo nuevo: el verbo 7 ya se guardó y reenviarlo lo contaría dos veces.
 		expect(store.pending).toEqual({8: {hits: 1, misses: 0}})
 	})
 })
@@ -252,10 +219,6 @@ describe('cargar el progreso guardado', () => {
 		expect(store.practicedCount).toBe(2)
 	})
 
-	/**
-	 * Lo practicado como invitado no se sube al iniciar sesión: no se pidió
-	 * atribuírselo a nadie, y subirlo falsearía las estadísticas de esa cuenta.
-	 */
 	it('descarta lo practicado como invitado', async () => {
 		const fake = createFakeClient({rows: []})
 		const store = await loadStore(fake.client, 'uuid-1')
@@ -290,10 +253,6 @@ describe('cargar el progreso guardado', () => {
 })
 
 describe('cerrar sesión', () => {
-	/**
-	 * Vaciar la cola al salir es imprescindible: si no, el progreso de quien acaba
-	 * de cerrar sesión se subiría a la cuenta del siguiente que entre.
-	 */
 	it('borra también los incrementos sin enviar', async () => {
 		const store = await loadStore(null, null)
 

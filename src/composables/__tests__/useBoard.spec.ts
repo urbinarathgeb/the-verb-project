@@ -15,7 +15,6 @@ function makeVerbs(count: number): Verb[] {
 	}))
 }
 
-/** Un tablero con semilla fija, para que cada test parta de un estado conocido. */
 function setup(seed = 1) {
 	return useBoard({rng: createSeededRng(seed)})
 }
@@ -79,10 +78,6 @@ describe('useBoard', () => {
 		expect(board.pool.value).toHaveLength(10)
 	})
 
-	/**
-	 * Los derivados deben recalcularse al repartir. Si `visibleCount` se hubiera
-	 * escrito como valor almacenado en vez de `computed`, aquí quedaría desfasado.
-	 */
 	it('los valores derivados siguen al estado tras cada reparto', () => {
 		const board = setup()
 
@@ -126,10 +121,6 @@ describe('useBoard', () => {
 	})
 })
 
-/**
- * Un tablero repartido y las utilidades para jugarlo en los tests: `cellOf`
- * localiza la celda de un verbo en una columna y `triadOf` las tres de un verbo.
- */
 function playable(verbCount = 20, boardSize = 6, seed = 1) {
 	const board = useBoard({rng: createSeededRng(seed)})
 	board.deal(makeVerbs(verbCount), boardSize)
@@ -144,13 +135,11 @@ function playable(verbCount = 20, boardSize = 6, seed = 1) {
 		return VERB_FORMS.map((form) => cellOf(verbId, form))
 	}
 
-	/** Ids de los verbos visibles, para elegir con qué jugar. */
 	const visible = () => board.visibleVerbIds.value
 
 	return {board, cellOf, triadOf, visible}
 }
 
-/** Resuelve la tríada de `verbId` seleccionando sus tres celdas. */
 function solve(play: ReturnType<typeof playable>, verbId: number): SelectionOutcome {
 	const cells = play.triadOf(verbId)
 	let outcome: SelectionOutcome = {type: 'ignored'}
@@ -179,7 +168,6 @@ describe('useBoard — selección', () => {
 		expect(play.board.selection.value.participle).toBeNull()
 	})
 
-	/** `MECHANICS.md` §1: nunca dos celdas seleccionadas en la misma columna. */
 	it('seleccionar otra celda de la misma columna reemplaza la anterior', () => {
 		const play = playable()
 		const [firstVerb, secondVerb] = play.visible()
@@ -237,10 +225,6 @@ describe('useBoard — validación de tríadas', () => {
 		expect(outcome.type === 'match' && outcome.cellIds).toEqual(expected)
 	})
 
-	/**
-	 * `MECHANICS.md` §1 permite seleccionar en cualquier orden. Se prueban las seis
-	 * permutaciones para que ninguna dependa del orden de las columnas.
-	 */
 	const selectionOrders: VerbForm[][] = [
 		['present', 'past', 'participle'],
 		['present', 'participle', 'past'],
@@ -334,11 +318,6 @@ describe('useBoard — validación de tríadas', () => {
 })
 
 describe('useBoard — reposición de tríadas', () => {
-	/**
-	 * La reposición ya no ocurre al acertar: `refill` la dispara aparte, y en la
-	 * app la agenda el store tras `refillDelayMs`. Ese hueco intermedio es la
-	 * mecánica, no un efecto secundario (`PLAN.md`, Bitácora, D8).
-	 */
 	it('el acierto deja un hueco en lugar de reponer', () => {
 		const play = playable(20, 6)
 		const verbId = play.visible()[0] ?? 0
@@ -348,7 +327,6 @@ describe('useBoard — reposición de tríadas', () => {
 		expect(play.board.visibleCount.value).toBe(5)
 		expect(play.board.vacatedCount.value).toBe(1)
 		expect(play.board.visibleVerbIds.value).not.toContain(verbId)
-		// La columna no encoge: la celda acertada sigue ahí, atenuada.
 		expect(play.board.columns.value.present).toHaveLength(6)
 	})
 
@@ -404,7 +382,6 @@ describe('useBoard — reposición de tríadas', () => {
 		expect(play.board.matchedCount.value).toBe(2)
 	})
 
-	/** Una celda acertada no es pulsable aunque siga en el tablero. */
 	it('la tríada acertada deja de aceptar selecciones', () => {
 		const play = playable(20, 6)
 		const verbId = play.visible()[0] ?? 0
@@ -441,10 +418,6 @@ describe('useBoard — reposición de tríadas', () => {
 			expect(play.board.matchedCount.value).toBe(6)
 		})
 
-		/**
-		 * El recorrido completo del nivel: se agota el pool reponiendo y después el
-		 * tablero se vacía. Es el camino de la victoria en Modo Supervivencia.
-		 */
 		it('agota el pool reponiendo y luego vacía el tablero', () => {
 			const play = playable(10, 6)
 
