@@ -10,7 +10,20 @@ export default defineConfigWithVueTs(
 
 	{
 		name: 'app/ignorados',
-		ignores: ['**/dist/**', '**/coverage/**', '**/node_modules/**', '.claude/skills/**'],
+		// `videos/` es el proyecto del video promocional: scripts de montaje y
+		// composiciones HTML que no son código de la aplicación y no se versionan
+		// (están en .gitignore). Prettier ya los ignora por leer el .gitignore;
+		// ESLint no lo lee, así que hay que excluirlos aquí a mano.
+		ignores: [
+			'**/dist/**',
+			'**/coverage/**',
+			'**/node_modules/**',
+			// `.claude/skills` es un enlace simbólico a `.agents/skills`, y ESLint
+			// resuelve la ruta real, así que hay que nombrar ambas.
+			'.claude/skills/**',
+			'.agents/**',
+			'videos/**',
+		],
 	},
 
 	pluginVue.configs['flat/recommended'],
