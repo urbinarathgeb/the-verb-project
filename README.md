@@ -2,6 +2,8 @@
 
 Juego web para aprender y practicar las formas de los verbos irregulares en inglés: presente, pasado y participio.
 
+## [Ver Live Demo](https://theverbproject.vercel.app/)
+
 En lugar de estudiar una tabla de gramática, se juega. El tablero muestra tres columnas desordenadas —una por forma verbal— y hay que emparejar las tres formas de cada verbo. Hay dos modos competitivos y un tercero sin reloj ni derrota, para aprender sin prisa.
 
 > **Estado:** prototipo en desarrollo. Los tres modos son jugables, con o sin cuenta, y el login con Google, la clasificación y el progreso persistente ya funcionan. Pendiente: ajustes de jugabilidad y cierre.
