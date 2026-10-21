@@ -164,6 +164,19 @@ En Vercel lo resuelve `vercel.json`, versionado en el repo. En otro proveedor ha
 
 Recuerda además que Vite **incrusta las variables `VITE_*` en tiempo de compilación**: definirlas en el panel del hosting no basta, hay que volver a construir.
 
+### Mantener el proyecto de Supabase activo
+
+En el plan gratuito, Supabase **pausa el proyecto tras 7 días sin actividad** y la app queda sin backend (el juego sigue funcionando en modo invitado, pero no hay login, ranking ni progreso). Para evitarlo, `.github/workflows/keep-supabase-awake.yml` consulta la API REST cada 3 días desde GitHub Actions.
+
+Necesita dos secrets del repositorio (*Settings → Secrets and variables → Actions*):
+
+| Secret | Valor |
+| --- | --- |
+| `SUPABASE_URL` | la misma URL que `VITE_SUPABASE_URL` |
+| `SUPABASE_ANON_KEY` | la misma clave que `VITE_SUPABASE_ANON_KEY` |
+
+Dos advertencias sobre los cron de GitHub Actions: **se desactivan solos tras 60 días sin commits** en el repositorio (GitHub avisa por correo y basta reactivarlos desde la pestaña Actions), y si el proyecto ya está pausado el ping no lo despierta — hay que reanudarlo a mano desde el panel de Supabase primero.
+
 ## Stack
 
 Vue 3.5 (Composition API con `<script setup>`), TypeScript estricto, Vite, Tailwind CSS 4, Pinia y Vitest. Supabase aporta Auth (Google) y Postgres; el schema y sus políticas RLS viven en `supabase/migrations/`.
