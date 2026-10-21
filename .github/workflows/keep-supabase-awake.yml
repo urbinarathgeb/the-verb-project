@@ -1,0 +1,39 @@
+# Mantiene despierto el proyecto de Supabase en el plan gratuito.
+#
+# Supabase pausa automáticamente los proyectos free tras 7 días sin actividad.
+# Este workflow hace una consulta real a la API REST (tabla `profiles`, que tiene
+# política `select` pública para `anon`) cada 3 días, de modo que el contador de
+# inactividad nunca llega a 7.
+name: Mantener Supabase despierto
+
+on:
+  schedule:
+    # Cada 3 días a las 06:00 UTC. El cron de GitHub no es puntual al minuto,
+    # pero el margen de 4 días hasta el límite absorbe cualquier retraso.
+    - cron: '0 6 */3 * *'
+  # Permite lanzarlo a mano desde la pestaña Actions.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Consultar la API REST de Supabase
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Faltan los secrets SUPABASE_URL y/o SUPABASE_ANON_KEY."
+            exit 1
+          fi
+
+          # `--fail-with-body` hace que un 4xx/5xx falle el job mostrando la
+          # respuesta, para que el aviso por correo de GitHub sea útil.
+          curl --fail-with-body --silent --show-error \
+            "$SUPABASE_URL/rest/v1/profiles?select=id&limit=1" \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY"
+
+          echo
+          echo "Ping correcto: el proyecto de Supabase sigue activo."
